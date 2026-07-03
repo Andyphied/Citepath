@@ -4,8 +4,10 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.api.routes import health
+from app.api.auth_errors import duplicate_email_handler
+from app.api.routes import auth, health
 from app.infrastructure.config import get_settings
+from app.modules.auth.exceptions import DuplicateEmailError
 
 
 @asynccontextmanager
@@ -24,4 +26,6 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
     app.include_router(health.router)
+    app.include_router(auth.router)
+    app.add_exception_handler(DuplicateEmailError, duplicate_email_handler)
     return app
