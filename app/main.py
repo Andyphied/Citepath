@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from app.api.routes import health
 from app.infrastructure.config import get_settings
 
 
@@ -17,8 +18,10 @@ async def lifespan(app: FastAPI):
 def create_app() -> FastAPI:
     """Create the FastAPI application with validated settings."""
     get_settings()
-    return FastAPI(
+    app = FastAPI(
         title="AtlasOps AI",
         description="Workspace-scoped RAG and incident investigation platform",
         lifespan=lifespan,
     )
+    app.include_router(health.router)
+    return app

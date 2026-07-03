@@ -1,0 +1,103 @@
+# AtlasOps AI local stack — API, worker, PostgreSQL (pgvector), Redis.
+# Fresh clone: docker compose up --build
+# Optional: cp .env.example .env to override defaults for host-native tools.
+
+x-app-environment: &app-environment
+  DATABASE_URL: postgresql+psycopg2://atlasops:atlasops@postgres:5432/atlasops
+  REDIS_URL: redis://redis:6379/0
+  JWT_SECRET_KEY: dev-only-change-me-in-production
+  STORAGE_BACKEND: local
+  STORAGE_PATH: /uploads
+  LLM_PROVIDER: openai
+  OPENAI_API_KEY: sk-dev-placeholder-not-used-locally
+  ENVIRONMENT: development
+  LOG_LEVEL: INFO
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: atlasops
+      POSTGRES_PASSWORD: atlasops
+      POSTGRES_DB: atlasops
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U atlasops -d atlasops"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: alembic upgrade head
+    environment:
+      <<: *app-environment
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: uvicorn app.main:create_app --factory --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    environment:
+      <<: *app-environment
+    volumes:
+      - ./app:/app/app
+      - uploads_data:/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: celery -A app.infrastructure.celery_app worker -l info -c 2
+    environment:
+      <<: *app-environment
+    volumes:
+      - ./app:/app/app
+      - uploads_data:/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  postgres_data:
+  uploads_data:
