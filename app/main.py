@@ -4,10 +4,15 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.api.auth_errors import duplicate_email_handler
+from app.api.auth_errors import (
+    duplicate_email_handler,
+    invalid_credentials_handler,
+    rate_limited_handler,
+)
 from app.api.routes import auth, health
 from app.infrastructure.config import get_settings
-from app.modules.auth.exceptions import DuplicateEmailError
+from app.infrastructure.rate_limit import RateLimitedError
+from app.modules.auth.exceptions import DuplicateEmailError, InvalidCredentialsError
 
 
 @asynccontextmanager
@@ -28,4 +33,6 @@ def create_app() -> FastAPI:
     app.include_router(health.router)
     app.include_router(auth.router)
     app.add_exception_handler(DuplicateEmailError, duplicate_email_handler)
+    app.add_exception_handler(InvalidCredentialsError, invalid_credentials_handler)
+    app.add_exception_handler(RateLimitedError, rate_limited_handler)
     return app

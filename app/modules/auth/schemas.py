@@ -45,3 +45,24 @@ class RegisterResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     expires_in: int
+
+
+class LoginRequest(BaseModel):
+    """Login payload."""
+
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=128)
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: str) -> str:
+        return value.lower().strip()
+
+
+class LoginResponse(BaseModel):
+    """Successful login response (same token shape as registration)."""
+
+    user: UserResponse
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int

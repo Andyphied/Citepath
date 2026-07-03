@@ -1,11 +1,11 @@
 """Authentication domain service."""
 
 from app.infrastructure.config import Settings
-from app.modules.auth.exceptions import DuplicateEmailError
+from app.modules.auth.exceptions import DuplicateEmailError, InvalidCredentialsError
 from app.modules.auth.jwt import create_access_token
-from app.modules.auth.password import hash_password
+from app.modules.auth.password import DUMMY_PASSWORD_HASH, hash_password, verify_password
 from app.modules.auth.repository import AuthRepository
-from app.modules.auth.schemas import RegisterResponse, UserResponse
+from app.modules.auth.schemas import LoginResponse, RegisterResponse, UserResponse
 
 
 class AuthService:
@@ -35,6 +35,21 @@ class AuthService:
         access_token, expires_in = create_access_token(user.id, self._settings)
 
         return RegisterResponse(
+            user=UserResponse.model_validate(user),
+            access_token=access_token,
+            expires_in=expires_in,
+        )
+
+    def login(self, *, email: str, password: str) -> LoginResponse:
+        """Authenticate credentials and issue a JWT access token."""
+        user = self._auth_repository.find_user_by_email(email)
+        password_hash = user.password_hash if user is not None else DUMMY_PASSWORD_HASH
+        if not verify_password(password, password_hash) or user is None:
+            raise InvalidCredentialsError()
+
+        access_token, expires_in = create_access_token(user.id, self._settings)
+
+        return LoginResponse(
             user=UserResponse.model_validate(user),
             access_token=access_token,
             expires_in=expires_in,
