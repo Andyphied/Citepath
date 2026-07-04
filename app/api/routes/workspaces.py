@@ -8,6 +8,7 @@ from app.api.deps import CurrentUserDep, WorkspaceServiceDep
 from app.modules.workspaces.schemas import (
     CreateWorkspaceRequest,
     InviteMemberRequest,
+    UpdateMemberRoleRequest,
     WorkspaceDetailResponse,
     WorkspaceListResponse,
     WorkspaceMemberResponse,
@@ -62,6 +63,44 @@ def invite_member(
         workspace_id=workspace_id,
         email=body.email,
         role=body.role,
+    )
+
+
+@router.patch(
+    "/{workspace_id}/members/{user_id}",
+    response_model=WorkspaceMemberResponse,
+)
+def update_member_role(
+    workspace_id: UUID,
+    user_id: UUID,
+    body: UpdateMemberRoleRequest,
+    current_user: CurrentUserDep,
+    workspace_service: WorkspaceServiceDep,
+) -> WorkspaceMemberResponse:
+    """Change a workspace member's role (Owner/Admin only)."""
+    return workspace_service.update_member_role(
+        user=current_user,
+        workspace_id=workspace_id,
+        target_user_id=user_id,
+        role=body.role,
+    )
+
+
+@router.delete(
+    "/{workspace_id}/members/{user_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def remove_member(
+    workspace_id: UUID,
+    user_id: UUID,
+    current_user: CurrentUserDep,
+    workspace_service: WorkspaceServiceDep,
+) -> None:
+    """Remove a member from a workspace (Owner/Admin only)."""
+    workspace_service.remove_member(
+        user=current_user,
+        workspace_id=workspace_id,
+        target_user_id=user_id,
     )
 
 

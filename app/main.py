@@ -17,6 +17,8 @@ from app.api.workspace_errors import (
     already_member_handler,
     duplicate_slug_handler,
     invalid_slug_handler,
+    last_owner_handler,
+    member_not_found_handler,
     user_not_found_handler,
     workspace_forbidden_handler,
 )
@@ -33,6 +35,8 @@ from app.modules.workspaces.exceptions import (
     AlreadyMemberError,
     DuplicateSlugError,
     InvalidSlugError,
+    LastOwnerError,
+    MemberNotFoundError,
     UserNotFoundError,
     WorkspaceForbiddenError,
 )
@@ -67,4 +71,6 @@ def create_app() -> FastAPI:
     app.add_exception_handler(WorkspaceForbiddenError, workspace_forbidden_handler)
     app.add_exception_handler(UserNotFoundError, user_not_found_handler)
     app.add_exception_handler(AlreadyMemberError, already_member_handler)
+    app.add_exception_handler(MemberNotFoundError, member_not_found_handler)
+    app.add_exception_handler(LastOwnerError, last_owner_handler)
     return app

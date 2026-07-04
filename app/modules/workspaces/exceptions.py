@@ -19,3 +19,11 @@ class UserNotFoundError(Exception):
 
 class AlreadyMemberError(Exception):
     """Raised when the user is already a workspace member."""
+
+
+class MemberNotFoundError(Exception):
+    """Raised when the target user is not a member of the workspace."""
+
+
+class LastOwnerError(Exception):
+    """Raised when an operation would leave the workspace without an owner."""

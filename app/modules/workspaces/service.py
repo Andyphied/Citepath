@@ -9,6 +9,8 @@ from app.modules.workspaces.exceptions import (
     AlreadyMemberError,
     DuplicateSlugError,
     InvalidSlugError,
+    LastOwnerError,
+    MemberNotFoundError,
     UserNotFoundError,
     WorkspaceForbiddenError,
 )
@@ -130,6 +132,99 @@ class WorkspaceService:
             email=invitee.email,
             role=member.role.value,
             created_at=member.created_at,
+        )
+
+    def update_member_role(
+        self,
+        *,
+        user: User,
+        workspace_id: UUID,
+        target_user_id: UUID,
+        role: str,
+    ) -> WorkspaceMemberResponse:
+        """Change a member's role (Owner/Admin only)."""
+        caller_membership = self._workspace_repository.get_member(
+            workspace_id,
+            user.id,
+        )
+        if caller_membership is None or caller_membership.role not in _INVITE_ROLES:
+            raise WorkspaceForbiddenError()
+
+        target_membership = self._workspace_repository.get_member(
+            workspace_id,
+            target_user_id,
+        )
+        if target_membership is None:
+            raise MemberNotFoundError()
+
+        new_role = WorkspaceRole(role)
+
+        if caller_membership.role == WorkspaceRole.ADMIN:
+            if target_membership.role == WorkspaceRole.OWNER:
+                raise WorkspaceForbiddenError()
+            if new_role == WorkspaceRole.OWNER:
+                raise WorkspaceForbiddenError()
+
+        if (
+            target_membership.role == WorkspaceRole.OWNER
+            and new_role != WorkspaceRole.OWNER
+            and self._workspace_repository.count_owners(workspace_id) == 1
+        ):
+            raise LastOwnerError()
+
+        updated = self._workspace_repository.update_member_role(
+            workspace_id=workspace_id,
+            user_id=target_user_id,
+            role=new_role,
+        )
+        target_user = self._user_repository.get_by_id(target_user_id)
+        if target_user is None:
+            raise MemberNotFoundError()
+
+        return WorkspaceMemberResponse(
+            user_id=target_user.id,
+            email=target_user.email,
+            role=updated.role.value,
+            created_at=updated.created_at,
+        )
+
+    def remove_member(
+        self,
+        *,
+        user: User,
+        workspace_id: UUID,
+        target_user_id: UUID,
+    ) -> None:
+        """Remove a member from a workspace (Owner/Admin only)."""
+        caller_membership = self._workspace_repository.get_member(
+            workspace_id,
+            user.id,
+        )
+        if caller_membership is None or caller_membership.role not in _INVITE_ROLES:
+            raise WorkspaceForbiddenError()
+
+        target_membership = self._workspace_repository.get_member(
+            workspace_id,
+            target_user_id,
+        )
+        if target_membership is None:
+            raise MemberNotFoundError()
+
+        if (
+            caller_membership.role == WorkspaceRole.ADMIN
+            and target_membership.role == WorkspaceRole.OWNER
+        ):
+            raise WorkspaceForbiddenError()
+
+        if (
+            target_membership.role == WorkspaceRole.OWNER
+            and self._workspace_repository.count_owners(workspace_id) == 1
+        ):
+            raise LastOwnerError()
+
+        self._workspace_repository.remove_member(
+            workspace_id=workspace_id,
+            user_id=target_user_id,
         )
 
     def _resolve_slug(self, *, name: str, slug: str | None) -> str:

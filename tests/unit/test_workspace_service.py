@@ -12,6 +12,8 @@ from app.modules.workspaces.exceptions import (
     AlreadyMemberError,
     DuplicateSlugError,
     InvalidSlugError,
+    LastOwnerError,
+    MemberNotFoundError,
     UserNotFoundError,
     WorkspaceForbiddenError,
 )
@@ -448,4 +450,330 @@ def test_invite_member_raises_already_member() -> None:
             workspace_id=workspace_id,
             email="engineer@example.com",
             role="member",
+        )
+
+
+def test_update_member_role_success_as_owner() -> None:
+    owner = _user()
+    target = User(
+        id=uuid4(),
+        email="member@example.com",
+        password_hash="hash",
+        name="Member",
+    )
+    workspace_id = uuid4()
+    created_at = datetime.now(UTC)
+    owner_membership = WorkspaceMember(
+        workspace_id=workspace_id,
+        user_id=owner.id,
+        role=WorkspaceRole.OWNER,
+    )
+    target_membership = WorkspaceMember(
+        workspace_id=workspace_id,
+        user_id=target.id,
+        role=WorkspaceRole.MEMBER,
+        created_at=created_at,
+    )
+    updated_member = WorkspaceMember(
+        workspace_id=workspace_id,
+        user_id=target.id,
+        role=WorkspaceRole.VIEWER,
+        created_at=created_at,
+    )
+    workspace_repository = MagicMock()
+    workspace_repository.get_member.side_effect = [
+        owner_membership,
+        target_membership,
+    ]
+    workspace_repository.update_member_role.return_value = updated_member
+    user_repository = MagicMock()
+    user_repository.get_by_id.return_value = target
+
+    result = WorkspaceService(
+        workspace_repository, user_repository
+    ).update_member_role(
+        user=owner,
+        workspace_id=workspace_id,
+        target_user_id=target.id,
+        role="viewer",
+    )
+
+    assert result.user_id == target.id
+    assert result.email == "member@example.com"
+    assert result.role == "viewer"
+    workspace_repository.update_member_role.assert_called_once_with(
+        workspace_id=workspace_id,
+        user_id=target.id,
+        role=WorkspaceRole.VIEWER,
+    )
+
+
+def test_update_member_role_raises_member_not_found() -> None:
+    owner = _user()
+    workspace_id = uuid4()
+    owner_membership = WorkspaceMember(
+        workspace_id=workspace_id,
+        user_id=owner.id,
+        role=WorkspaceRole.OWNER,
+    )
+    workspace_repository = MagicMock()
+    workspace_repository.get_member.side_effect = [owner_membership, None]
+    user_repository = MagicMock()
+
+    with pytest.raises(MemberNotFoundError):
+        WorkspaceService(workspace_repository, user_repository).update_member_role(
+            user=owner,
+            workspace_id=workspace_id,
+            target_user_id=uuid4(),
+            role="viewer",
+        )
+
+
+def test_update_member_role_raises_forbidden_for_viewer() -> None:
+    viewer = _user()
+    workspace_id = uuid4()
+    membership = WorkspaceMember(
+        workspace_id=workspace_id,
+        user_id=viewer.id,
+        role=WorkspaceRole.VIEWER,
+    )
+    workspace_repository = MagicMock()
+    workspace_repository.get_member.return_value = membership
+    user_repository = MagicMock()
+
+    with pytest.raises(WorkspaceForbiddenError):
+        WorkspaceService(workspace_repository, user_repository).update_member_role(
+            user=viewer,
+            workspace_id=workspace_id,
+            target_user_id=uuid4(),
+            role="viewer",
+        )
+
+
+def test_update_member_role_admin_cannot_modify_owner() -> None:
+    admin = _user()
+    owner_target = User(
+        id=uuid4(),
+        email="owner@example.com",
+        password_hash="hash",
+        name="Other Owner",
+    )
+    workspace_id = uuid4()
+    admin_membership = WorkspaceMember(
+        workspace_id=workspace_id,
+        user_id=admin.id,
+        role=WorkspaceRole.ADMIN,
+    )
+    owner_membership = WorkspaceMember(
+        workspace_id=workspace_id,
+        user_id=owner_target.id,
+        role=WorkspaceRole.OWNER,
+    )
+    workspace_repository = MagicMock()
+    workspace_repository.get_member.side_effect = [
+        admin_membership,
+        owner_membership,
+    ]
+    user_repository = MagicMock()
+
+    with pytest.raises(WorkspaceForbiddenError):
+        WorkspaceService(workspace_repository, user_repository).update_member_role(
+            user=admin,
+            workspace_id=workspace_id,
+            target_user_id=owner_target.id,
+            role="admin",
+        )
+
+
+def test_update_member_role_admin_cannot_assign_owner() -> None:
+    admin = _user()
+    target = User(
+        id=uuid4(),
+        email="member@example.com",
+        password_hash="hash",
+        name="Member",
+    )
+    workspace_id = uuid4()
+    admin_membership = WorkspaceMember(
+        workspace_id=workspace_id,
+        user_id=admin.id,
+        role=WorkspaceRole.ADMIN,
+    )
+    target_membership = WorkspaceMember(
+        workspace_id=workspace_id,
+        user_id=target.id,
+        role=WorkspaceRole.MEMBER,
+    )
+    workspace_repository = MagicMock()
+    workspace_repository.get_member.side_effect = [
+        admin_membership,
+        target_membership,
+    ]
+    user_repository = MagicMock()
+
+    with pytest.raises(WorkspaceForbiddenError):
+        WorkspaceService(workspace_repository, user_repository).update_member_role(
+            user=admin,
+            workspace_id=workspace_id,
+            target_user_id=target.id,
+            role="owner",
+        )
+
+
+def test_update_member_role_raises_last_owner_on_self_demotion() -> None:
+    owner = _user()
+    workspace_id = uuid4()
+    owner_membership = WorkspaceMember(
+        workspace_id=workspace_id,
+        user_id=owner.id,
+        role=WorkspaceRole.OWNER,
+    )
+    workspace_repository = MagicMock()
+    workspace_repository.get_member.side_effect = [
+        owner_membership,
+        owner_membership,
+    ]
+    workspace_repository.count_owners.return_value = 1
+    user_repository = MagicMock()
+
+    with pytest.raises(LastOwnerError):
+        WorkspaceService(workspace_repository, user_repository).update_member_role(
+            user=owner,
+            workspace_id=workspace_id,
+            target_user_id=owner.id,
+            role="admin",
+        )
+
+
+def test_remove_member_success_as_owner() -> None:
+    owner = _user()
+    target_id = uuid4()
+    workspace_id = uuid4()
+    owner_membership = WorkspaceMember(
+        workspace_id=workspace_id,
+        user_id=owner.id,
+        role=WorkspaceRole.OWNER,
+    )
+    target_membership = WorkspaceMember(
+        workspace_id=workspace_id,
+        user_id=target_id,
+        role=WorkspaceRole.MEMBER,
+    )
+    workspace_repository = MagicMock()
+    workspace_repository.get_member.side_effect = [
+        owner_membership,
+        target_membership,
+    ]
+    user_repository = MagicMock()
+
+    WorkspaceService(workspace_repository, user_repository).remove_member(
+        user=owner,
+        workspace_id=workspace_id,
+        target_user_id=target_id,
+    )
+
+    workspace_repository.remove_member.assert_called_once_with(
+        workspace_id=workspace_id,
+        user_id=target_id,
+    )
+
+
+def test_remove_member_raises_member_not_found() -> None:
+    owner = _user()
+    workspace_id = uuid4()
+    owner_membership = WorkspaceMember(
+        workspace_id=workspace_id,
+        user_id=owner.id,
+        role=WorkspaceRole.OWNER,
+    )
+    workspace_repository = MagicMock()
+    workspace_repository.get_member.side_effect = [owner_membership, None]
+    user_repository = MagicMock()
+
+    with pytest.raises(MemberNotFoundError):
+        WorkspaceService(workspace_repository, user_repository).remove_member(
+            user=owner,
+            workspace_id=workspace_id,
+            target_user_id=uuid4(),
+        )
+
+
+def test_remove_member_raises_last_owner_on_self_removal() -> None:
+    owner = _user()
+    workspace_id = uuid4()
+    owner_membership = WorkspaceMember(
+        workspace_id=workspace_id,
+        user_id=owner.id,
+        role=WorkspaceRole.OWNER,
+    )
+    workspace_repository = MagicMock()
+    workspace_repository.get_member.side_effect = [
+        owner_membership,
+        owner_membership,
+    ]
+    workspace_repository.count_owners.return_value = 1
+    user_repository = MagicMock()
+
+    with pytest.raises(LastOwnerError):
+        WorkspaceService(workspace_repository, user_repository).remove_member(
+            user=owner,
+            workspace_id=workspace_id,
+            target_user_id=owner.id,
+        )
+
+
+def test_remove_member_self_allowed_when_another_owner_exists() -> None:
+    owner = _user()
+    workspace_id = uuid4()
+    owner_membership = WorkspaceMember(
+        workspace_id=workspace_id,
+        user_id=owner.id,
+        role=WorkspaceRole.OWNER,
+    )
+    workspace_repository = MagicMock()
+    workspace_repository.get_member.side_effect = [
+        owner_membership,
+        owner_membership,
+    ]
+    workspace_repository.count_owners.return_value = 2
+    user_repository = MagicMock()
+
+    WorkspaceService(workspace_repository, user_repository).remove_member(
+        user=owner,
+        workspace_id=workspace_id,
+        target_user_id=owner.id,
+    )
+
+    workspace_repository.remove_member.assert_called_once_with(
+        workspace_id=workspace_id,
+        user_id=owner.id,
+    )
+
+
+def test_remove_member_admin_cannot_remove_owner() -> None:
+    admin = _user()
+    owner_target_id = uuid4()
+    workspace_id = uuid4()
+    admin_membership = WorkspaceMember(
+        workspace_id=workspace_id,
+        user_id=admin.id,
+        role=WorkspaceRole.ADMIN,
+    )
+    owner_membership = WorkspaceMember(
+        workspace_id=workspace_id,
+        user_id=owner_target_id,
+        role=WorkspaceRole.OWNER,
+    )
+    workspace_repository = MagicMock()
+    workspace_repository.get_member.side_effect = [
+        admin_membership,
+        owner_membership,
+    ]
+    user_repository = MagicMock()
+
+    with pytest.raises(WorkspaceForbiddenError):
+        WorkspaceService(workspace_repository, user_repository).remove_member(
+            user=admin,
+            workspace_id=workspace_id,
+            target_user_id=owner_target_id,
         )

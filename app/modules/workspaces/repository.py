@@ -104,3 +104,44 @@ class WorkspaceRepository:
             raise AlreadyMemberError from None
         self._session.refresh(member)
         return member
+
+    def count_owners(self, workspace_id: UUID) -> int:
+        """Return the number of owners in a workspace."""
+        count = self._session.scalar(
+            select(func.count())
+            .select_from(WorkspaceMember)
+            .where(
+                WorkspaceMember.workspace_id == workspace_id,
+                WorkspaceMember.role == WorkspaceRole.OWNER,
+            )
+        )
+        return int(count or 0)
+
+    def update_member_role(
+        self,
+        *,
+        workspace_id: UUID,
+        user_id: UUID,
+        role: WorkspaceRole,
+    ) -> WorkspaceMember:
+        """Update a member's role in a workspace."""
+        member = self.get_member(workspace_id, user_id)
+        if member is None:
+            raise ValueError("member must exist before role update")
+        member.role = role
+        self._session.commit()
+        self._session.refresh(member)
+        return member
+
+    def remove_member(
+        self,
+        *,
+        workspace_id: UUID,
+        user_id: UUID,
+    ) -> None:
+        """Remove a user from a workspace."""
+        member = self.get_member(workspace_id, user_id)
+        if member is None:
+            raise ValueError("member must exist before removal")
+        self._session.delete(member)
+        self._session.commit()

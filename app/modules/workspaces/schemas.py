@@ -91,8 +91,27 @@ class InviteMemberRequest(BaseModel):
         return normalized
 
 
+class UpdateMemberRoleRequest(BaseModel):
+    """Update a workspace member's role."""
+
+    role: str = Field(
+        description="Workspace role: owner, admin, member, or viewer"
+    )
+
+    @field_validator("role")
+    @classmethod
+    def normalize_role(cls, value: str) -> str:
+        normalized = value.strip().lower()
+        allowed = {"owner", "admin", "member", "viewer"}
+        if normalized not in allowed:
+            raise ValueError(
+                "role must be one of: owner, admin, member, viewer"
+            )
+        return normalized
+
+
 class WorkspaceMemberResponse(BaseModel):
-    """Workspace member returned after invite."""
+    """Workspace member returned after invite or role update."""
 
     user_id: UUID
     email: str
