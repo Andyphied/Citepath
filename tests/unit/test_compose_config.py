@@ -23,7 +23,7 @@ def test_compose_api_has_healthcheck_and_migration_dependency() -> None:
         "CMD",
         "curl",
         "-f",
-        "http://localhost:8000/health",
+        "http://localhost:8000/health/ready",
     ]
 
 
