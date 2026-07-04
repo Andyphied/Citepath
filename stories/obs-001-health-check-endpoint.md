@@ -2,7 +2,9 @@
 
 > **Epic:** Epic 11: Observability and Reliability  
 > **Story ID:** OBS-001
-> **Status:** in_progress
+> **Status:** completed
+> **Completed:** 2026-07-04
+> **Implementation note:** [OBS-001](../docs/implementation-notes/OBS-001.md)
 
 **User Story**
 
