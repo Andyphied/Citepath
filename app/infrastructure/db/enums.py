@@ -59,48 +59,61 @@ class UsageEventStatus(str, enum.Enum):
     FAILED = "failed"
 
 
+def _enum_values(enum_cls: type[enum.Enum]) -> list[str]:
+    return [member.value for member in enum_cls]
+
+
 workspace_role_enum = SAEnum(
     WorkspaceRole,
     name="workspace_role",
     native_enum=True,
+    values_callable=_enum_values,
 )
 document_status_enum = SAEnum(
     DocumentStatus,
     name="document_status",
     native_enum=True,
+    values_callable=_enum_values,
 )
 ingestion_job_status_enum = SAEnum(
     IngestionJobStatus,
     name="ingestion_job_status",
     native_enum=True,
+    values_callable=_enum_values,
 )
 conversation_mode_enum = SAEnum(
     ConversationMode,
     name="conversation_mode",
     native_enum=True,
+    values_callable=_enum_values,
 )
 message_role_enum = SAEnum(
     MessageRole,
     name="message_role",
     native_enum=True,
+    values_callable=_enum_values,
 )
 agent_run_status_enum = SAEnum(
     AgentRunStatus,
     name="agent_run_status",
     native_enum=True,
+    values_callable=_enum_values,
 )
 agent_tool_call_status_enum = SAEnum(
     AgentToolCallStatus,
     name="agent_tool_call_status",
     native_enum=True,
+    values_callable=_enum_values,
 )
 usage_operation_enum = SAEnum(
     UsageOperation,
     name="usage_operation",
     native_enum=True,
+    values_callable=_enum_values,
 )
 usage_event_status_enum = SAEnum(
     UsageEventStatus,
     name="usage_event_status",
     native_enum=True,
+    values_callable=_enum_values,
 )
