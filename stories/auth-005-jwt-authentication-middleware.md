@@ -2,7 +2,9 @@
 
 > **Epic:** Epic 1: Authentication and User Accounts  
 > **Story ID:** AUTH-005
-> **Status:** in_progress
+> **Status:** completed
+> **Completed:** 2026-07-04
+> **Implementation note:** [AUTH-005](../docs/implementation-notes/AUTH-005.md)
 
 **User Story**
 
