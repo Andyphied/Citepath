@@ -12,7 +12,8 @@ from app.api.auth_errors import (
     token_invalid_handler,
     unauthorized_handler,
 )
-from app.api.routes import auth, health
+from app.api.routes import auth, health, workspaces
+from app.api.workspace_errors import duplicate_slug_handler, invalid_slug_handler
 from app.infrastructure.config import get_settings
 from app.infrastructure.rate_limit import RateLimitedError
 from app.modules.auth.exceptions import (
@@ -22,6 +23,7 @@ from app.modules.auth.exceptions import (
     TokenInvalidError,
     UnauthorizedError,
 )
+from app.modules.workspaces.exceptions import DuplicateSlugError, InvalidSlugError
 
 
 @asynccontextmanager
@@ -41,10 +43,13 @@ def create_app() -> FastAPI:
     )
     app.include_router(health.router)
     app.include_router(auth.router)
+    app.include_router(workspaces.router)
     app.add_exception_handler(DuplicateEmailError, duplicate_email_handler)
     app.add_exception_handler(InvalidCredentialsError, invalid_credentials_handler)
     app.add_exception_handler(RateLimitedError, rate_limited_handler)
     app.add_exception_handler(UnauthorizedError, unauthorized_handler)
     app.add_exception_handler(TokenExpiredError, token_expired_handler)
     app.add_exception_handler(TokenInvalidError, token_invalid_handler)
+    app.add_exception_handler(DuplicateSlugError, duplicate_slug_handler)
+    app.add_exception_handler(InvalidSlugError, invalid_slug_handler)
     return app

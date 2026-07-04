@@ -20,6 +20,7 @@ class Workspace(Base):
         server_default=func.gen_random_uuid(),
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
+    slug: Mapped[str] = mapped_column(String(128), nullable=False, unique=True)
     created_by: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id"),
@@ -37,7 +38,10 @@ class Workspace(Base):
         nullable=False,
     )
 
-    __table_args__ = (Index("ix_workspaces_created_by", "created_by"),)
+    __table_args__ = (
+        Index("ix_workspaces_created_by", "created_by"),
+        Index("ix_workspaces_slug", "slug", unique=True),
+    )
 
 
 class WorkspaceMember(Base):

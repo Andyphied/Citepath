@@ -18,6 +18,8 @@ from app.modules.auth.repository import AuthRepository
 from app.modules.auth.service import AuthService
 from app.modules.users.models import User
 from app.modules.users.repository import UserRepository
+from app.modules.workspaces.repository import WorkspaceRepository
+from app.modules.workspaces.service import WorkspaceService
 
 DbSession = Annotated[Session, Depends(get_db)]
 
@@ -39,6 +41,14 @@ def get_auth_service(
 
 
 AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
+
+
+def get_workspace_service(db: DbSession) -> WorkspaceService:
+    """Provide WorkspaceService with database session."""
+    return WorkspaceService(WorkspaceRepository(db))
+
+
+WorkspaceServiceDep = Annotated[WorkspaceService, Depends(get_workspace_service)]
 
 
 def enforce_login_rate_limit(request: Request) -> None:
