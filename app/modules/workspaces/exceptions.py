@@ -7,3 +7,7 @@ class DuplicateSlugError(Exception):
 
 class InvalidSlugError(Exception):
     """Raised when a workspace slug fails format validation."""
+
+
+class WorkspaceForbiddenError(Exception):
+    """Raised when a user lacks membership for a workspace."""

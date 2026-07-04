@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -23,6 +23,31 @@ class WorkspaceRepository:
             select(Workspace.id).where(Workspace.slug == slug)
         )
         return workspace_id is not None
+
+    def list_for_user(self, user_id: UUID) -> list[tuple[Workspace, WorkspaceRole]]:
+        """Return workspaces the user belongs to with their role."""
+        rows = self._session.execute(
+            select(Workspace, WorkspaceMember.role)
+            .join(WorkspaceMember, WorkspaceMember.workspace_id == Workspace.id)
+            .where(WorkspaceMember.user_id == user_id)
+            .order_by(Workspace.created_at.desc())
+        ).all()
+        return [(workspace, role) for workspace, role in rows]
+
+    def get_by_id(self, workspace_id: UUID) -> Workspace | None:
+        """Return a workspace by id, or None when it does not exist."""
+        return self._session.scalar(
+            select(Workspace).where(Workspace.id == workspace_id)
+        )
+
+    def count_members(self, workspace_id: UUID) -> int:
+        """Return the number of members in a workspace."""
+        count = self._session.scalar(
+            select(func.count())
+            .select_from(WorkspaceMember)
+            .where(WorkspaceMember.workspace_id == workspace_id)
+        )
+        return int(count or 0)
 
     def get_member(self, workspace_id: UUID, user_id: UUID) -> WorkspaceMember | None:
         """Return membership for a user in a workspace, or None."""

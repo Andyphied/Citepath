@@ -13,7 +13,11 @@ from app.api.auth_errors import (
     unauthorized_handler,
 )
 from app.api.routes import auth, health, workspaces
-from app.api.workspace_errors import duplicate_slug_handler, invalid_slug_handler
+from app.api.workspace_errors import (
+    duplicate_slug_handler,
+    invalid_slug_handler,
+    workspace_forbidden_handler,
+)
 from app.infrastructure.config import get_settings
 from app.infrastructure.rate_limit import RateLimitedError
 from app.modules.auth.exceptions import (
@@ -23,7 +27,11 @@ from app.modules.auth.exceptions import (
     TokenInvalidError,
     UnauthorizedError,
 )
-from app.modules.workspaces.exceptions import DuplicateSlugError, InvalidSlugError
+from app.modules.workspaces.exceptions import (
+    DuplicateSlugError,
+    InvalidSlugError,
+    WorkspaceForbiddenError,
+)
 
 
 @asynccontextmanager
@@ -52,4 +60,5 @@ def create_app() -> FastAPI:
     app.add_exception_handler(TokenInvalidError, token_invalid_handler)
     app.add_exception_handler(DuplicateSlugError, duplicate_slug_handler)
     app.add_exception_handler(InvalidSlugError, invalid_slug_handler)
+    app.add_exception_handler(WorkspaceForbiddenError, workspace_forbidden_handler)
     return app

@@ -3,7 +3,7 @@
 from fastapi import Request, status
 from fastapi.responses import JSONResponse
 
-from app.modules.workspaces.exceptions import DuplicateSlugError, InvalidSlugError
+from app.modules.workspaces.exceptions import DuplicateSlugError, InvalidSlugError, WorkspaceForbiddenError
 
 
 async def duplicate_slug_handler(
@@ -36,6 +36,23 @@ async def invalid_slug_handler(
                 "message": (
                     "Slug must contain only lowercase letters, numbers, and hyphens"
                 ),
+                "details": {},
+            }
+        },
+    )
+
+
+async def workspace_forbidden_handler(
+    _request: Request,
+    _exc: WorkspaceForbiddenError,
+) -> JSONResponse:
+    """Return 403 when the user is not a workspace member."""
+    return JSONResponse(
+        status_code=status.HTTP_403_FORBIDDEN,
+        content={
+            "error": {
+                "code": "forbidden",
+                "message": "You do not have permission to perform this action",
                 "details": {},
             }
         },

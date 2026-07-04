@@ -95,6 +95,7 @@ Every `{workspace_id}` route validates membership before handler execution. Reso
 | **Purpose** | List workspaces for current user |
 | **Role** | Authenticated |
 | **Response 200** | `{ "items": [{ "id", "name", "role", "created_at" }] }` |
+| **Errors** | `401 unauthorized` |
 
 ### `GET /workspaces/{workspace_id}`
 
@@ -103,7 +104,7 @@ Every `{workspace_id}` route validates membership before handler execution. Reso
 | **Purpose** | Workspace detail |
 | **Role** | Member+ |
 | **Response 200** | `{ "id", "name", "member_count", "created_at" }` |
-| **Errors** | `404` if not member |
+| **Errors** | `401 unauthorized`, `403 forbidden` if not a member |
 
 ### `POST /workspaces/{workspace_id}/members`
 

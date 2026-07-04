@@ -40,3 +40,27 @@ class WorkspaceResponse(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class WorkspaceListItemResponse(BaseModel):
+    """Workspace summary for the authenticated user's membership list."""
+
+    id: UUID
+    name: str
+    role: str
+    created_at: datetime
+
+
+class WorkspaceListResponse(BaseModel):
+    """Paginated-style list wrapper for user workspaces."""
+
+    items: list[WorkspaceListItemResponse]
+
+
+class WorkspaceDetailResponse(BaseModel):
+    """Workspace detail for members."""
+
+    id: UUID
+    name: str
+    member_count: int
+    created_at: datetime
