@@ -24,6 +24,7 @@ from app.api.workspace_errors import (
 )
 from app.infrastructure.config import get_settings
 from app.infrastructure.rate_limit import RateLimitedError
+from app.modules.observability.middleware import RequestIdMiddleware
 from app.modules.auth.exceptions import (
     DuplicateEmailError,
     InvalidCredentialsError,
@@ -57,6 +58,8 @@ def create_app() -> FastAPI:
         description="Workspace-scoped RAG and incident investigation platform",
         lifespan=lifespan,
     )
+    # Added last so it runs first on ingress (Starlette middleware order).
+    app.add_middleware(RequestIdMiddleware)
     app.include_router(health.router)
     app.include_router(auth.router)
     app.include_router(workspaces.router)
