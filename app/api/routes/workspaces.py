@@ -7,8 +7,10 @@ from fastapi import APIRouter, status
 from app.api.deps import CurrentUserDep, WorkspaceServiceDep
 from app.modules.workspaces.schemas import (
     CreateWorkspaceRequest,
+    InviteMemberRequest,
     WorkspaceDetailResponse,
     WorkspaceListResponse,
+    WorkspaceMemberResponse,
     WorkspaceResponse,
 )
 
@@ -40,6 +42,26 @@ def get_workspace(
     return workspace_service.get_workspace(
         user=current_user,
         workspace_id=workspace_id,
+    )
+
+
+@router.post(
+    "/{workspace_id}/members",
+    response_model=WorkspaceMemberResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def invite_member(
+    workspace_id: UUID,
+    body: InviteMemberRequest,
+    current_user: CurrentUserDep,
+    workspace_service: WorkspaceServiceDep,
+) -> WorkspaceMemberResponse:
+    """Add an existing user to a workspace by email (Owner/Admin only)."""
+    return workspace_service.invite_member(
+        user=current_user,
+        workspace_id=workspace_id,
+        email=body.email,
+        role=body.role,
     )
 
 

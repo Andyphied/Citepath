@@ -7,7 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.infrastructure.db.enums import WorkspaceRole
-from app.modules.workspaces.exceptions import DuplicateSlugError
+from app.modules.workspaces.exceptions import AlreadyMemberError, DuplicateSlugError
 from app.modules.workspaces.models import Workspace, WorkspaceMember
 
 
@@ -82,3 +82,25 @@ class WorkspaceRepository:
             raise DuplicateSlugError from None
         self._session.refresh(workspace)
         return workspace
+
+    def add_member(
+        self,
+        *,
+        workspace_id: UUID,
+        user_id: UUID,
+        role: WorkspaceRole,
+    ) -> WorkspaceMember:
+        """Add a user to a workspace with the given role."""
+        member = WorkspaceMember(
+            workspace_id=workspace_id,
+            user_id=user_id,
+            role=role,
+        )
+        self._session.add(member)
+        try:
+            self._session.commit()
+        except IntegrityError:
+            self._session.rollback()
+            raise AlreadyMemberError from None
+        self._session.refresh(member)
+        return member

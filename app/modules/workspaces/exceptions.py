@@ -11,3 +11,11 @@ class InvalidSlugError(Exception):
 
 class WorkspaceForbiddenError(Exception):
     """Raised when a user lacks membership for a workspace."""
+
+
+class UserNotFoundError(Exception):
+    """Raised when inviting a user whose email is not registered."""
+
+
+class AlreadyMemberError(Exception):
+    """Raised when the user is already a workspace member."""

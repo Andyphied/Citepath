@@ -3,7 +3,13 @@
 from fastapi import Request, status
 from fastapi.responses import JSONResponse
 
-from app.modules.workspaces.exceptions import DuplicateSlugError, InvalidSlugError, WorkspaceForbiddenError
+from app.modules.workspaces.exceptions import (
+    AlreadyMemberError,
+    DuplicateSlugError,
+    InvalidSlugError,
+    UserNotFoundError,
+    WorkspaceForbiddenError,
+)
 
 
 async def duplicate_slug_handler(
@@ -53,6 +59,40 @@ async def workspace_forbidden_handler(
             "error": {
                 "code": "forbidden",
                 "message": "You do not have permission to perform this action",
+                "details": {},
+            }
+        },
+    )
+
+
+async def user_not_found_handler(
+    _request: Request,
+    _exc: UserNotFoundError,
+) -> JSONResponse:
+    """Return 404 when invite target email is not registered."""
+    return JSONResponse(
+        status_code=status.HTTP_404_NOT_FOUND,
+        content={
+            "error": {
+                "code": "user_not_found",
+                "message": "No user exists with that email address",
+                "details": {},
+            }
+        },
+    )
+
+
+async def already_member_handler(
+    _request: Request,
+    _exc: AlreadyMemberError,
+) -> JSONResponse:
+    """Return 409 when the user is already a workspace member."""
+    return JSONResponse(
+        status_code=status.HTTP_409_CONFLICT,
+        content={
+            "error": {
+                "code": "already_member",
+                "message": "User is already a member of this workspace",
                 "details": {},
             }
         },

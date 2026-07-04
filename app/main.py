@@ -14,8 +14,10 @@ from app.api.auth_errors import (
 )
 from app.api.routes import auth, health, workspaces
 from app.api.workspace_errors import (
+    already_member_handler,
     duplicate_slug_handler,
     invalid_slug_handler,
+    user_not_found_handler,
     workspace_forbidden_handler,
 )
 from app.infrastructure.config import get_settings
@@ -28,8 +30,10 @@ from app.modules.auth.exceptions import (
     UnauthorizedError,
 )
 from app.modules.workspaces.exceptions import (
+    AlreadyMemberError,
     DuplicateSlugError,
     InvalidSlugError,
+    UserNotFoundError,
     WorkspaceForbiddenError,
 )
 
@@ -61,4 +65,6 @@ def create_app() -> FastAPI:
     app.add_exception_handler(DuplicateSlugError, duplicate_slug_handler)
     app.add_exception_handler(InvalidSlugError, invalid_slug_handler)
     app.add_exception_handler(WorkspaceForbiddenError, workspace_forbidden_handler)
+    app.add_exception_handler(UserNotFoundError, user_not_found_handler)
+    app.add_exception_handler(AlreadyMemberError, already_member_handler)
     return app

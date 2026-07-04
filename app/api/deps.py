@@ -45,7 +45,7 @@ AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
 
 def get_workspace_service(db: DbSession) -> WorkspaceService:
     """Provide WorkspaceService with database session."""
-    return WorkspaceService(WorkspaceRepository(db))
+    return WorkspaceService(WorkspaceRepository(db), UserRepository(db))
 
 
 WorkspaceServiceDep = Annotated[WorkspaceService, Depends(get_workspace_service)]

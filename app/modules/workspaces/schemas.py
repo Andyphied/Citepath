@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 class CreateWorkspaceRequest(BaseModel):
@@ -63,4 +63,38 @@ class WorkspaceDetailResponse(BaseModel):
     id: UUID
     name: str
     member_count: int
+    created_at: datetime
+
+
+class InviteMemberRequest(BaseModel):
+    """Invite an existing user to a workspace by email."""
+
+    email: EmailStr
+    role: str = Field(
+        description="Workspace role: owner, admin, member, or viewer"
+    )
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: str) -> str:
+        return value.strip().lower()
+
+    @field_validator("role")
+    @classmethod
+    def normalize_role(cls, value: str) -> str:
+        normalized = value.strip().lower()
+        allowed = {"owner", "admin", "member", "viewer"}
+        if normalized not in allowed:
+            raise ValueError(
+                "role must be one of: owner, admin, member, viewer"
+            )
+        return normalized
+
+
+class WorkspaceMemberResponse(BaseModel):
+    """Workspace member returned after invite."""
+
+    user_id: UUID
+    email: str
+    role: str
     created_at: datetime
