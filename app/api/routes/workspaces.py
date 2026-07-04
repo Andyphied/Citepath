@@ -4,7 +4,12 @@ from uuid import UUID
 
 from fastapi import APIRouter, status
 
-from app.api.deps import CurrentUserDep, WorkspaceServiceDep
+from app.api.deps import (
+    CurrentUserDep,
+    RequireManageMembersDep,
+    WorkspaceContextDep,
+    WorkspaceServiceDep,
+)
 from app.modules.workspaces.schemas import (
     CreateWorkspaceRequest,
     InviteMemberRequest,
@@ -35,15 +40,11 @@ def list_workspaces(
     response_model=WorkspaceDetailResponse,
 )
 def get_workspace(
-    workspace_id: UUID,
-    current_user: CurrentUserDep,
+    workspace_context: WorkspaceContextDep,
     workspace_service: WorkspaceServiceDep,
 ) -> WorkspaceDetailResponse:
     """Return workspace details when the caller is a member."""
-    return workspace_service.get_workspace(
-        user=current_user,
-        workspace_id=workspace_id,
-    )
+    return workspace_service.get_workspace(context=workspace_context)
 
 
 @router.post(
@@ -52,15 +53,13 @@ def get_workspace(
     status_code=status.HTTP_201_CREATED,
 )
 def invite_member(
-    workspace_id: UUID,
+    workspace_context: RequireManageMembersDep,
     body: InviteMemberRequest,
-    current_user: CurrentUserDep,
     workspace_service: WorkspaceServiceDep,
 ) -> WorkspaceMemberResponse:
     """Add an existing user to a workspace by email (Owner/Admin only)."""
     return workspace_service.invite_member(
-        user=current_user,
-        workspace_id=workspace_id,
+        context=workspace_context,
         email=body.email,
         role=body.role,
     )
@@ -71,16 +70,14 @@ def invite_member(
     response_model=WorkspaceMemberResponse,
 )
 def update_member_role(
-    workspace_id: UUID,
+    workspace_context: RequireManageMembersDep,
     user_id: UUID,
     body: UpdateMemberRoleRequest,
-    current_user: CurrentUserDep,
     workspace_service: WorkspaceServiceDep,
 ) -> WorkspaceMemberResponse:
     """Change a workspace member's role (Owner/Admin only)."""
     return workspace_service.update_member_role(
-        user=current_user,
-        workspace_id=workspace_id,
+        context=workspace_context,
         target_user_id=user_id,
         role=body.role,
     )
@@ -91,15 +88,13 @@ def update_member_role(
     status_code=status.HTTP_204_NO_CONTENT,
 )
 def remove_member(
-    workspace_id: UUID,
+    workspace_context: RequireManageMembersDep,
     user_id: UUID,
-    current_user: CurrentUserDep,
     workspace_service: WorkspaceServiceDep,
 ) -> None:
     """Remove a member from a workspace (Owner/Admin only)."""
     workspace_service.remove_member(
-        user=current_user,
-        workspace_id=workspace_id,
+        context=workspace_context,
         target_user_id=user_id,
     )
 
