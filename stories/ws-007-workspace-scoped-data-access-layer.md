@@ -2,7 +2,9 @@
 
 > **Epic:** Epic 2: Workspace Management and RBAC  
 > **Story ID:** WS-007
-> **Status:** in_progress
+> **Status:** completed
+> **Completed:** 2026-07-04
+> **Implementation note:** [WS-007](../docs/implementation-notes/WS-007.md)
 
 **User Story**
 
