@@ -4,7 +4,7 @@ import pytest
 from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, select, text
 from sqlalchemy.orm import sessionmaker
 
 try:
@@ -15,6 +15,8 @@ except ImportError:  # pragma: no cover - optional dev dependency
 from app.infrastructure.config import reset_settings_cache
 from app.infrastructure.db.session import reset_db_engine
 from app.main import create_app
+from app.modules.audit.models import AuditLog
+from app.modules.workspaces.permissions import FAILED_AUTHORIZATION_EVENT
 
 
 def _docker_available() -> bool:
@@ -309,6 +311,113 @@ def test_invite_member_viewer_returns_403(workspace_test_context) -> None:
 
     assert response.status_code == 403
     assert response.json()["error"]["code"] == "forbidden"
+
+
+def test_invite_member_viewer_records_failed_authorization_audit(
+    workspace_test_context,
+) -> None:
+    client, db_session = workspace_test_context
+    _owner, owner_token = _register_user(
+        client,
+        email="audit-viewer-owner@example.com",
+        name="Owner",
+    )
+    viewer, viewer_token = _register_user(
+        client,
+        email="audit-viewer@example.com",
+        name="Viewer User",
+    )
+    _register_user(
+        client,
+        email="audit-target@example.com",
+        name="Target User",
+    )
+    workspace = _create_workspace(
+        client,
+        owner_token,
+        name="Audit Viewer Team",
+        slug="audit-viewer-team",
+    )
+
+    viewer_invite = _invite_member(
+        client,
+        owner_token,
+        workspace["id"],
+        email="audit-viewer@example.com",
+        role="viewer",
+    )
+    assert viewer_invite.status_code == 201
+
+    response = _invite_member(
+        client,
+        viewer_token,
+        workspace["id"],
+        email="audit-target@example.com",
+        role="member",
+    )
+
+    assert response.status_code == 403
+
+    db_session.expire_all()
+    audit_rows = db_session.scalars(
+        select(AuditLog).where(
+            AuditLog.workspace_id == workspace["id"],
+            AuditLog.event_type == FAILED_AUTHORIZATION_EVENT,
+        )
+    ).all()
+    assert len(audit_rows) == 1
+    assert str(audit_rows[0].actor_user_id) == viewer["id"]
+    assert audit_rows[0].metadata_["action"] == "manage_members"
+    assert audit_rows[0].metadata_["role"] == "viewer"
+
+
+def test_invite_member_non_member_records_failed_authorization_audit(
+    workspace_test_context,
+) -> None:
+    client, db_session = workspace_test_context
+    _owner_a, owner_a_token = _register_user(
+        client,
+        email="audit-owner-a@example.com",
+        name="Owner A",
+    )
+    owner_b, owner_b_token = _register_user(
+        client,
+        email="audit-owner-b@example.com",
+        name="Owner B",
+    )
+    _register_user(
+        client,
+        email="audit-isolated-target@example.com",
+        name="Isolated Target",
+    )
+    workspace_a = _create_workspace(
+        client,
+        owner_a_token,
+        name="Audit Workspace A",
+        slug="audit-workspace-a",
+    )
+
+    response = _invite_member(
+        client,
+        owner_b_token,
+        workspace_a["id"],
+        email="audit-isolated-target@example.com",
+        role="member",
+    )
+
+    assert response.status_code == 403
+
+    db_session.expire_all()
+    audit_rows = db_session.scalars(
+        select(AuditLog).where(
+            AuditLog.workspace_id == workspace_a["id"],
+            AuditLog.event_type == FAILED_AUTHORIZATION_EVENT,
+        )
+    ).all()
+    assert len(audit_rows) == 1
+    assert str(audit_rows[0].actor_user_id) == owner_b["id"]
+    assert audit_rows[0].metadata_["action"] == "manage_members"
+    assert audit_rows[0].metadata_["reason"] == "non_member"
 
 
 def test_invite_member_member_returns_403(workspace_test_context) -> None:

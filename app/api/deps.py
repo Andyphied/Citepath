@@ -12,12 +12,14 @@ from app.infrastructure.rate_limit import (
     RateLimitedError,
     check_login_rate_limit,
 )
+from app.modules.audit.repository import AuditRepository
 from app.modules.auth.exceptions import TokenInvalidError, UnauthorizedError
 from app.modules.auth.jwt import decode_access_token
 from app.modules.auth.repository import AuthRepository
 from app.modules.auth.service import AuthService
 from app.modules.users.models import User
 from app.modules.users.repository import UserRepository
+from app.modules.workspaces.permissions import PermissionService
 from app.modules.workspaces.repository import WorkspaceRepository
 from app.modules.workspaces.service import WorkspaceService
 
@@ -45,7 +47,13 @@ AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
 
 def get_workspace_service(db: DbSession) -> WorkspaceService:
     """Provide WorkspaceService with database session."""
-    return WorkspaceService(WorkspaceRepository(db), UserRepository(db))
+    audit_repository = AuditRepository(db)
+    permission_service = PermissionService(audit_repository)
+    return WorkspaceService(
+        WorkspaceRepository(db),
+        UserRepository(db),
+        permission_service,
+    )
 
 
 WorkspaceServiceDep = Annotated[WorkspaceService, Depends(get_workspace_service)]

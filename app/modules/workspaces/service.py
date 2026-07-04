@@ -14,6 +14,9 @@ from app.modules.workspaces.exceptions import (
     UserNotFoundError,
     WorkspaceForbiddenError,
 )
+from app.modules.workspaces.context import WorkspaceContext
+from app.modules.workspaces.models import WorkspaceMember
+from app.modules.workspaces.permissions import PermissionAction, PermissionService
 from app.modules.workspaces.repository import WorkspaceRepository
 from app.modules.workspaces.schemas import (
     WorkspaceDetailResponse,
@@ -29,9 +32,6 @@ from app.modules.workspaces.slug import (
 )
 
 
-_INVITE_ROLES = frozenset({WorkspaceRole.OWNER, WorkspaceRole.ADMIN})
-
-
 class WorkspaceService:
     """Workspace creation and membership orchestration."""
 
@@ -39,9 +39,11 @@ class WorkspaceService:
         self,
         workspace_repository: WorkspaceRepository,
         user_repository: UserRepository,
+        permission_service: PermissionService | None = None,
     ) -> None:
         self._workspace_repository = workspace_repository
         self._user_repository = user_repository
+        self._permission_service = permission_service or PermissionService()
 
     def create_workspace(
         self,
@@ -77,10 +79,22 @@ class WorkspaceService:
         """Return workspace details when the user is a member."""
         membership = self._workspace_repository.get_member(workspace_id, user.id)
         if membership is None:
+            self._permission_service.record_authorization_failure(
+                workspace_id=workspace_id,
+                user_id=user.id,
+                action=PermissionAction.VIEW_DOCUMENTS,
+                reason="non_member",
+            )
             raise WorkspaceForbiddenError()
 
         workspace = self._workspace_repository.get_by_id(workspace_id)
         if workspace is None:
+            self._permission_service.record_authorization_failure(
+                workspace_id=workspace_id,
+                user_id=user.id,
+                action=PermissionAction.VIEW_DOCUMENTS,
+                reason="non_member",
+            )
             raise WorkspaceForbiddenError()
 
         return WorkspaceDetailResponse(
@@ -99,12 +113,10 @@ class WorkspaceService:
         role: str,
     ) -> WorkspaceMemberResponse:
         """Add an existing user to a workspace by email (Owner/Admin only)."""
-        caller_membership = self._workspace_repository.get_member(
-            workspace_id,
-            user.id,
+        caller_membership = self._require_manage_members(
+            user=user,
+            workspace_id=workspace_id,
         )
-        if caller_membership is None or caller_membership.role not in _INVITE_ROLES:
-            raise WorkspaceForbiddenError()
 
         target_role = WorkspaceRole(role)
 
@@ -112,7 +124,11 @@ class WorkspaceService:
             caller_membership.role == WorkspaceRole.ADMIN
             and target_role == WorkspaceRole.OWNER
         ):
-            raise WorkspaceForbiddenError()
+            self._raise_admin_owner_forbidden(
+                user=user,
+                workspace_id=workspace_id,
+                caller_membership=caller_membership,
+            )
 
         invitee = self._user_repository.get_by_email(email)
         if invitee is None:
@@ -143,12 +159,10 @@ class WorkspaceService:
         role: str,
     ) -> WorkspaceMemberResponse:
         """Change a member's role (Owner/Admin only)."""
-        caller_membership = self._workspace_repository.get_member(
-            workspace_id,
-            user.id,
+        caller_membership = self._require_manage_members(
+            user=user,
+            workspace_id=workspace_id,
         )
-        if caller_membership is None or caller_membership.role not in _INVITE_ROLES:
-            raise WorkspaceForbiddenError()
 
         target_membership = self._workspace_repository.get_member(
             workspace_id,
@@ -161,9 +175,17 @@ class WorkspaceService:
 
         if caller_membership.role == WorkspaceRole.ADMIN:
             if target_membership.role == WorkspaceRole.OWNER:
-                raise WorkspaceForbiddenError()
+                self._raise_admin_owner_forbidden(
+                    user=user,
+                    workspace_id=workspace_id,
+                    caller_membership=caller_membership,
+                )
             if new_role == WorkspaceRole.OWNER:
-                raise WorkspaceForbiddenError()
+                self._raise_admin_owner_forbidden(
+                    user=user,
+                    workspace_id=workspace_id,
+                    caller_membership=caller_membership,
+                )
 
         if (
             target_membership.role == WorkspaceRole.OWNER
@@ -196,12 +218,10 @@ class WorkspaceService:
         target_user_id: UUID,
     ) -> None:
         """Remove a member from a workspace (Owner/Admin only)."""
-        caller_membership = self._workspace_repository.get_member(
-            workspace_id,
-            user.id,
+        caller_membership = self._require_manage_members(
+            user=user,
+            workspace_id=workspace_id,
         )
-        if caller_membership is None or caller_membership.role not in _INVITE_ROLES:
-            raise WorkspaceForbiddenError()
 
         target_membership = self._workspace_repository.get_member(
             workspace_id,
@@ -214,7 +234,11 @@ class WorkspaceService:
             caller_membership.role == WorkspaceRole.ADMIN
             and target_membership.role == WorkspaceRole.OWNER
         ):
-            raise WorkspaceForbiddenError()
+            self._raise_admin_owner_forbidden(
+                user=user,
+                workspace_id=workspace_id,
+                caller_membership=caller_membership,
+            )
 
         if (
             target_membership.role == WorkspaceRole.OWNER
@@ -226,6 +250,53 @@ class WorkspaceService:
             workspace_id=workspace_id,
             user_id=target_user_id,
         )
+
+    def _require_manage_members(
+        self,
+        *,
+        user: User,
+        workspace_id: UUID,
+    ) -> WorkspaceMember:
+        """Ensure the caller is a member with MANAGE_MEMBERS permission."""
+        caller_membership = self._workspace_repository.get_member(
+            workspace_id,
+            user.id,
+        )
+        if caller_membership is None:
+            self._permission_service.record_authorization_failure(
+                workspace_id=workspace_id,
+                user_id=user.id,
+                action=PermissionAction.MANAGE_MEMBERS,
+                reason="non_member",
+            )
+            raise WorkspaceForbiddenError()
+
+        self._permission_service.require(
+            WorkspaceContext(
+                workspace_id=workspace_id,
+                user_id=user.id,
+                role=caller_membership.role,
+            ),
+            PermissionAction.MANAGE_MEMBERS,
+        )
+        return caller_membership
+
+    def _raise_admin_owner_forbidden(
+        self,
+        *,
+        user: User,
+        workspace_id: UUID,
+        caller_membership: WorkspaceMember,
+    ) -> None:
+        """Record audit and raise when Admin attempts Owner escalation."""
+        self._permission_service.record_authorization_failure(
+            workspace_id=workspace_id,
+            user_id=user.id,
+            action=PermissionAction.MANAGE_MEMBERS,
+            role=caller_membership.role,
+            reason="admin_owner_escalation_blocked",
+        )
+        raise WorkspaceForbiddenError()
 
     def _resolve_slug(self, *, name: str, slug: str | None) -> str:
         if slug is not None:
