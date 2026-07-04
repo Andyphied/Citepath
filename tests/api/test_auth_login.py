@@ -1,5 +1,7 @@
 """API tests for user login."""
 
+from pathlib import Path
+
 import jwt
 import pytest
 from alembic import command
@@ -17,6 +19,8 @@ from app.infrastructure.config import reset_settings_cache
 from app.infrastructure.db.session import reset_db_engine
 from app.infrastructure.rate_limit import reset_login_rate_limiter
 from app.main import create_app
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def _docker_available() -> bool:
@@ -48,12 +52,13 @@ def postgres_url():
 @pytest.fixture
 def auth_test_context(postgres_url, minimal_env, monkeypatch):
     """Migrated database, API client, and session with per-test cleanup."""
+    monkeypatch.chdir(REPO_ROOT)
     monkeypatch.setenv("DATABASE_URL", postgres_url)
     reset_settings_cache()
     reset_db_engine()
     reset_login_rate_limiter()
 
-    alembic_cfg = Config("alembic.ini")
+    alembic_cfg = Config(str(REPO_ROOT / "alembic.ini"))
     command.upgrade(alembic_cfg, "head")
 
     engine = create_engine(postgres_url)

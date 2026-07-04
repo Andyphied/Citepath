@@ -8,6 +8,7 @@ from app.modules.auth.schemas import (
     LoginResponse,
     RegisterRequest,
     RegisterResponse,
+    UserResponse,
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -47,10 +48,7 @@ def login(
     )
 
 
-@router.get("/session-check")
-def session_check(current_user: CurrentUserDep) -> dict[str, str | bool]:
-    """Protected stub endpoint for JWT middleware verification."""
-    return {
-        "authenticated": True,
-        "user_id": str(current_user.id),
-    }
+@router.get("/me", response_model=UserResponse)
+def get_current_user_profile(current_user: CurrentUserDep) -> UserResponse:
+    """Return the authenticated user's profile."""
+    return UserResponse.model_validate(current_user)

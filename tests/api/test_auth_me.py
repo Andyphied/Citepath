@@ -1,7 +1,8 @@
-"""API integration tests for JWT authentication middleware."""
+"""API tests for GET /auth/me."""
 
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from uuid import uuid4
 
 import jwt
 import pytest
@@ -37,7 +38,7 @@ def _docker_available() -> bool:
 
 pytestmark = pytest.mark.skipif(
     not _docker_available(),
-    reason="Docker is required for auth middleware API tests",
+    reason="Docker is required for auth me API tests",
 )
 
 
@@ -70,28 +71,63 @@ def auth_test_context(postgres_url, minimal_env, monkeypatch):
     reset_db_engine()
 
 
-def _register_and_get_token(client: TestClient) -> tuple[str, str]:
+def _register_user(client: TestClient) -> dict:
     response = client.post(
         "/auth/register",
         json={
-            "email": "middleware-user@example.com",
+            "email": "me-user@example.com",
             "password": "securepass123",
-            "name": "Middleware User",
+            "name": "Me User",
         },
     )
     assert response.status_code == 201
-    body = response.json()
-    return body["access_token"], body["user"]["id"]
+    return response.json()
 
 
-def test_me_returns_401_for_token_without_exp(auth_test_context) -> None:
+def test_me_returns_user_profile_with_valid_token(auth_test_context) -> None:
     client = auth_test_context
-    _token, user_id = _register_and_get_token(client)
+    registered = _register_user(client)
+    token = registered["access_token"]
+
+    response = client.get(
+        "/auth/me",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["id"] == registered["user"]["id"]
+    assert body["email"] == registered["user"]["email"]
+    assert body["name"] == registered["user"]["name"]
+    assert body["created_at"] == registered["user"]["created_at"]
+    assert "password_hash" not in body
+    assert "password" not in body
+    assert "updated_at" not in body
+
+
+def test_me_returns_401_without_authorization_header(
+    auth_test_context,
+) -> None:
+    client = auth_test_context
+
+    response = client.get("/auth/me")
+
+    assert response.status_code == 401
+    body = response.json()
+    assert body["error"]["code"] == "unauthorized"
+    assert body["error"]["message"] == "Authentication required"
+
+
+def test_me_returns_401_for_expired_token(auth_test_context) -> None:
+    client = auth_test_context
+    registered = _register_user(client)
+    user_id = registered["user"]["id"]
     now = datetime.now(UTC)
-    token_without_exp = jwt.encode(
+    expired_token = jwt.encode(
         {
             "sub": user_id,
-            "iat": now,
+            "iat": now - timedelta(hours=2),
+            "exp": now - timedelta(hours=1),
         },
         "test-secret-key",
         algorithm="HS256",
@@ -99,37 +135,48 @@ def test_me_returns_401_for_token_without_exp(auth_test_context) -> None:
 
     response = client.get(
         "/auth/me",
-        headers={"Authorization": f"Bearer {token_without_exp}"},
+        headers={"Authorization": f"Bearer {expired_token}"},
+    )
+
+    assert response.status_code == 401
+    body = response.json()
+    assert body["error"]["code"] == "token_expired"
+    assert body["error"]["message"] == "Access token has expired"
+
+
+def test_me_returns_401_for_invalid_token(auth_test_context) -> None:
+    client = auth_test_context
+
+    response = client.get(
+        "/auth/me",
+        headers={"Authorization": "Bearer not-a-valid-jwt"},
     )
 
     assert response.status_code == 401
     body = response.json()
     assert body["error"]["code"] == "token_invalid"
     assert body["error"]["message"] == "Invalid access token"
-    assert body["error"]["details"] == {}
 
 
-def test_me_returns_401_for_token_with_wrong_secret(
-    auth_test_context,
-) -> None:
+def test_me_returns_401_for_unknown_user_id(auth_test_context) -> None:
     client = auth_test_context
-    _token, user_id = _register_and_get_token(client)
     now = datetime.now(UTC)
-    wrong_secret_token = jwt.encode(
+    unknown_user_token = jwt.encode(
         {
-            "sub": user_id,
+            "sub": str(uuid4()),
             "iat": now,
             "exp": now + timedelta(hours=1),
         },
-        "wrong-secret-key",
+        "test-secret-key",
         algorithm="HS256",
     )
 
     response = client.get(
         "/auth/me",
-        headers={"Authorization": f"Bearer {wrong_secret_token}"},
+        headers={"Authorization": f"Bearer {unknown_user_token}"},
     )
 
     assert response.status_code == 401
     body = response.json()
     assert body["error"]["code"] == "token_invalid"
+    assert body["error"]["message"] == "Invalid access token"
