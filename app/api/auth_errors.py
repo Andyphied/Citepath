@@ -4,7 +4,13 @@ from fastapi import Request, status
 from fastapi.responses import JSONResponse
 
 from app.infrastructure.rate_limit import RateLimitedError
-from app.modules.auth.exceptions import DuplicateEmailError, InvalidCredentialsError
+from app.modules.auth.exceptions import (
+    DuplicateEmailError,
+    InvalidCredentialsError,
+    TokenExpiredError,
+    TokenInvalidError,
+    UnauthorizedError,
+)
 
 
 async def duplicate_email_handler(
@@ -56,4 +62,55 @@ async def rate_limited_handler(
             }
         },
         headers={"Retry-After": str(exc.retry_after)},
+    )
+
+
+async def unauthorized_handler(
+    _request: Request,
+    _exc: UnauthorizedError,
+) -> JSONResponse:
+    """Return 401 when no Bearer token is provided."""
+    return JSONResponse(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        content={
+            "error": {
+                "code": "unauthorized",
+                "message": "Authentication required",
+                "details": {},
+            }
+        },
+    )
+
+
+async def token_expired_handler(
+    _request: Request,
+    _exc: TokenExpiredError,
+) -> JSONResponse:
+    """Return 401 when the JWT has expired."""
+    return JSONResponse(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        content={
+            "error": {
+                "code": "token_expired",
+                "message": "Access token has expired",
+                "details": {},
+            }
+        },
+    )
+
+
+async def token_invalid_handler(
+    _request: Request,
+    _exc: TokenInvalidError,
+) -> JSONResponse:
+    """Return 401 when the JWT is malformed or invalid."""
+    return JSONResponse(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        content={
+            "error": {
+                "code": "token_invalid",
+                "message": "Invalid access token",
+                "details": {},
+            }
+        },
     )

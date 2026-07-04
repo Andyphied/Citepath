@@ -1,4 +1,4 @@
-"""JWT access token creation."""
+"""JWT access token creation and verification."""
 
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
@@ -6,6 +6,7 @@ from uuid import UUID
 import jwt
 
 from app.infrastructure.config import Settings
+from app.modules.auth.exceptions import TokenExpiredError, TokenInvalidError
 
 
 def create_access_token(user_id: UUID, settings: Settings) -> tuple[str, int]:
@@ -23,3 +24,27 @@ def create_access_token(user_id: UUID, settings: Settings) -> tuple[str, int]:
         algorithm="HS256",
     )
     return token, expires_in
+
+
+def decode_access_token(token: str, settings: Settings) -> UUID:
+    """Decode and verify an HS256 JWT; return the user id from `sub`."""
+    try:
+        payload = jwt.decode(
+            token,
+            settings.JWT_SECRET_KEY,
+            algorithms=["HS256"],
+            options={"require": ["exp", "sub"]},
+        )
+    except jwt.ExpiredSignatureError as exc:
+        raise TokenExpiredError() from exc
+    except jwt.InvalidTokenError as exc:
+        raise TokenInvalidError() from exc
+
+    sub = payload.get("sub")
+    if not sub:
+        raise TokenInvalidError()
+
+    try:
+        return UUID(str(sub))
+    except ValueError as exc:
+        raise TokenInvalidError() from exc

@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, status
 
-from app.api.deps import AuthServiceDep, LoginRateLimitDep
+from app.api.deps import AuthServiceDep, CurrentUserDep, LoginRateLimitDep
 from app.modules.auth.schemas import (
     LoginRequest,
     LoginResponse,
@@ -45,3 +45,12 @@ def login(
         email=body.email,
         password=body.password,
     )
+
+
+@router.get("/session-check")
+def session_check(current_user: CurrentUserDep) -> dict[str, str | bool]:
+    """Protected stub endpoint for JWT middleware verification."""
+    return {
+        "authenticated": True,
+        "user_id": str(current_user.id),
+    }
