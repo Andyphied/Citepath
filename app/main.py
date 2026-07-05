@@ -24,7 +24,9 @@ from app.api.workspace_errors import (
 )
 from app.infrastructure.config import get_settings
 from app.infrastructure.rate_limit import RateLimitedError
+from app.modules.observability.logging import configure_logging
 from app.modules.observability.middleware import RequestIdMiddleware
+from app.modules.observability.request_logging import RequestLoggingMiddleware
 from app.modules.auth.exceptions import (
     DuplicateEmailError,
     InvalidCredentialsError,
@@ -52,13 +54,15 @@ async def lifespan(app: FastAPI):
 
 def create_app() -> FastAPI:
     """Create the FastAPI application with validated settings."""
+    configure_logging()
     get_settings()
     app = FastAPI(
         title="AtlasOps AI",
         description="Workspace-scoped RAG and incident investigation platform",
         lifespan=lifespan,
     )
-    # Added last so it runs first on ingress (Starlette middleware order).
+    # RequestLoggingMiddleware is inner; RequestIdMiddleware is outer (runs first on ingress).
+    app.add_middleware(RequestLoggingMiddleware)
     app.add_middleware(RequestIdMiddleware)
     app.include_router(health.router)
     app.include_router(auth.router)
