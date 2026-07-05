@@ -166,7 +166,9 @@ def test_login_short_password_returns_422(auth_test_context) -> None:
 
     assert response.status_code == 422
     body = response.json()
-    assert "detail" in body
+    assert body["error"]["code"] == "validation_error"
+    assert "password" in body["error"]["details"]
+    assert body["error"]["request_id"]
 
 
 def test_login_rate_limit_returns_429_on_eleventh_attempt(auth_test_context) -> None:

@@ -3,6 +3,7 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
 
 from app.api.auth_errors import (
     duplicate_email_handler,
@@ -24,6 +25,10 @@ from app.api.workspace_errors import (
 )
 from app.infrastructure.config import get_settings
 from app.infrastructure.rate_limit import RateLimitedError
+from app.modules.observability.errors import (
+    request_validation_exception_handler,
+    unhandled_exception_handler,
+)
 from app.modules.observability.logging import configure_logging
 from app.modules.observability.middleware import RequestIdMiddleware
 from app.modules.observability.request_logging import RequestLoggingMiddleware
@@ -80,4 +85,9 @@ def create_app() -> FastAPI:
     app.add_exception_handler(AlreadyMemberError, already_member_handler)
     app.add_exception_handler(MemberNotFoundError, member_not_found_handler)
     app.add_exception_handler(LastOwnerError, last_owner_handler)
+    app.add_exception_handler(
+        RequestValidationError,
+        request_validation_exception_handler,
+    )
+    app.add_exception_handler(Exception, unhandled_exception_handler)
     return app
