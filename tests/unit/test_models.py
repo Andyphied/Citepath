@@ -32,3 +32,22 @@ def test_tenant_tables_have_workspace_id_column():
     for table_name in tenant_tables:
         table = Base.metadata.tables[table_name]
         assert "workspace_id" in table.columns
+
+
+def test_workspace_slug_column_matches_migration_expectations():
+    """ORM metadata for workspaces.slug stays aligned with migration 002."""
+    import_all_models()
+    workspaces = Base.metadata.tables["workspaces"]
+    slug_column = workspaces.columns["slug"]
+
+    assert slug_column.nullable is False
+    assert slug_column.type.length == 128
+
+    slug_indexes = [
+        index
+        for index in workspaces.indexes
+        if index.name == "ix_workspaces_slug"
+    ]
+    assert len(slug_indexes) == 1
+    assert slug_indexes[0].unique is True
+    assert list(slug_indexes[0].columns.keys()) == ["slug"]

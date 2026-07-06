@@ -29,6 +29,22 @@ EXPECTED_TABLES = {
     "alembic_version",
 }
 
+# Representative tenant tables whose composite indexes must lead with workspace_id.
+TENANT_TABLES_WORKSPACE_ID_INDEXES = {
+    "documents": "ix_documents_workspace_id_status",
+    "document_chunks": "ix_document_chunks_workspace_id_document_id",
+    "ingestion_jobs": "ix_ingestion_jobs_workspace_id_status_created_at",
+    "audit_logs": "ix_audit_logs_workspace_id_created_at",
+}
+
+
+def _workspace_id_leading_index_names(inspector, table_name: str) -> set[str]:
+    return {
+        index["name"]
+        for index in inspector.get_indexes(table_name)
+        if index["column_names"] and index["column_names"][0] == "workspace_id"
+    }
+
 
 def _docker_available() -> bool:
     if PostgresContainer is None:
@@ -89,12 +105,25 @@ def test_migrations_create_all_core_tables(postgres_url, minimal_env, monkeypatc
         ).scalar_one()
         assert hnsw_index == 1
 
-        workspace_indexes = {
-            index["name"]
-            for index in inspector.get_indexes("documents")
-            if index["column_names"][0] == "workspace_id"
+        workspaces_columns = {
+            column["name"]: column for column in inspector.get_columns("workspaces")
         }
-        assert "ix_documents_workspace_id_status" in workspace_indexes
+        assert "slug" in workspaces_columns
+        assert workspaces_columns["slug"]["nullable"] is False
+
+        slug_index = next(
+            index
+            for index in inspector.get_indexes("workspaces")
+            if index["name"] == "ix_workspaces_slug"
+        )
+        assert slug_index["column_names"] == ["slug"]
+        assert slug_index["unique"] is True
+
+        for table_name, expected_index in TENANT_TABLES_WORKSPACE_ID_INDEXES.items():
+            workspace_indexes = _workspace_id_leading_index_names(inspector, table_name)
+            assert expected_index in workspace_indexes, (
+                f"{table_name} missing workspace_id-leading index {expected_index}"
+            )
 
     engine.dispose()
 
