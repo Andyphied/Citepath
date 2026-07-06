@@ -2,7 +2,9 @@
 
 > **Epic:** Epic 12: Deployment and Developer Experience  
 > **Story ID:** INFRA-003
-> **Status:** in_progress
+> **Status:** completed
+> **Completed:** 2026-07-06
+> **Implementation note:** [INFRA-003](../docs/implementation-notes/INFRA-003.md)
 
 **User Story**
 
