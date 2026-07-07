@@ -14,11 +14,14 @@ from app.infrastructure.rate_limit import (
     RateLimitedError,
     check_login_rate_limit,
 )
+from app.infrastructure.storage import create_storage_backend
 from app.modules.audit.repository import AuditRepository
 from app.modules.auth.exceptions import TokenInvalidError, UnauthorizedError
 from app.modules.auth.jwt import decode_access_token
 from app.modules.auth.repository import AuthRepository
 from app.modules.auth.service import AuthService
+from app.modules.documents.repository import DocumentRepository
+from app.modules.documents.service import DocumentService
 from app.modules.users.models import User
 from app.modules.users.repository import UserRepository
 from app.modules.workspaces.context import WorkspaceContext
@@ -191,3 +194,23 @@ RequireManageMembersDep = Annotated[
     WorkspaceContext,
     Depends(require_permission(PermissionAction.MANAGE_MEMBERS)),
 ]
+
+RequireDocumentMutateDep = Annotated[
+    WorkspaceContext,
+    Depends(require_permission(PermissionAction.DOCUMENT_MUTATE)),
+]
+
+
+def get_document_service(
+    db: DbSession,
+    settings: SettingsDep,
+) -> DocumentService:
+    """Provide DocumentService with repository and storage backend."""
+    return DocumentService(
+        DocumentRepository(db),
+        create_storage_backend(settings),
+        settings,
+    )
+
+
+DocumentServiceDep = Annotated[DocumentService, Depends(get_document_service)]

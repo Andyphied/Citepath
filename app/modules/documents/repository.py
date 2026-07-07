@@ -24,6 +24,7 @@ class DocumentRepository(WorkspaceScopedRepository[Document]):
         *,
         workspace_id: UUID,
         status: DocumentStatus,
+        id: UUID | None = None,
         uploaded_by: UUID | None = None,
         title: str | None = None,
         source_type: str | None = None,
@@ -32,16 +33,19 @@ class DocumentRepository(WorkspaceScopedRepository[Document]):
         metadata_: dict[str, Any] | None = None,
     ) -> Document:
         """Persist a document in the given workspace."""
-        document = Document(
-            workspace_id=workspace_id,
-            uploaded_by=uploaded_by,
-            title=title,
-            source_type=source_type,
-            file_type=file_type,
-            storage_key=storage_key,
-            status=status,
-            metadata_=metadata_,
-        )
+        document_kwargs: dict[str, Any] = {
+            "workspace_id": workspace_id,
+            "uploaded_by": uploaded_by,
+            "title": title,
+            "source_type": source_type,
+            "file_type": file_type,
+            "storage_key": storage_key,
+            "status": status,
+            "metadata_": metadata_,
+        }
+        if id is not None:
+            document_kwargs["id"] = id
+        document = Document(**document_kwargs)
         self._session.add(document)
         self._session.commit()
         self._session.refresh(document)
