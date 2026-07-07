@@ -5,6 +5,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
+from app.modules.ingestion.schemas import IngestionJobResponse
+
 
 class DocumentResponse(BaseModel):
     """Uploaded document metadata returned to clients."""
@@ -20,3 +22,10 @@ class DocumentResponse(BaseModel):
     uploaded_by: UUID
     created_at: datetime
     updated_at: datetime
+
+
+class DocumentUploadResponse(BaseModel):
+    """Upload response including document metadata and ingestion job."""
+
+    document: DocumentResponse
+    ingestion_job: IngestionJobResponse

@@ -1,16 +1,17 @@
 """Unit tests for DocumentService upload validation and persistence."""
 
+from datetime import datetime
 from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
 
 from app.infrastructure.config import Settings
-from app.infrastructure.db.enums import DocumentStatus
+from app.infrastructure.db.enums import DocumentStatus, WorkspaceRole
 from app.modules.documents.exceptions import FileTooLargeError, UnsupportedFileTypeError
 from app.modules.documents.service import DocumentService
+from app.modules.ingestion.schemas import IngestionJobResponse
 from app.modules.workspaces.context import WorkspaceContext
-from app.infrastructure.db.enums import WorkspaceRole
 
 
 @pytest.fixture
@@ -36,12 +37,31 @@ def workspace_context() -> WorkspaceContext:
     )
 
 
-def test_upload_persists_document_with_uploaded_status(
+def _ingestion_job_response(
+    *,
+    workspace_id,
+    document_id,
+) -> IngestionJobResponse:
+    return IngestionJobResponse(
+        id=uuid4(),
+        workspace_id=workspace_id,
+        document_id=document_id,
+        status="pending",
+        attempt_count=0,
+        error_message=None,
+        started_at=None,
+        completed_at=None,
+        created_at=datetime.fromisoformat("2026-07-07T00:00:00+00:00"),
+    )
+
+
+def test_upload_persists_document_and_creates_ingestion_job(
     settings: Settings,
     workspace_context: WorkspaceContext,
 ) -> None:
     repository = MagicMock()
     storage = MagicMock()
+    ingestion_service = MagicMock()
     storage.save.return_value = f"{workspace_context.workspace_id}/doc-key/runbook.md"
 
     created = MagicMock()
@@ -56,7 +76,13 @@ def test_upload_persists_document_with_uploaded_status(
     created.updated_at = "2026-07-06T00:00:00Z"
     repository.create.return_value = created
 
-    service = DocumentService(repository, storage, settings)
+    job_response = _ingestion_job_response(
+        workspace_id=workspace_context.workspace_id,
+        document_id=created.id,
+    )
+    ingestion_service.create_job_for_document.return_value = job_response
+
+    service = DocumentService(repository, storage, settings, ingestion_service)
     result = service.upload(
         context=workspace_context,
         file_content=b"# Runbook",
@@ -71,15 +97,21 @@ def test_upload_persists_document_with_uploaded_status(
     assert create_kwargs["title"] == "billing-api-runbook.md"
     assert create_kwargs["file_type"] == "md"
     assert create_kwargs["status"] == DocumentStatus.UPLOADED
-    assert result.status == "uploaded"
-    assert result.file_type == "md"
+    ingestion_service.create_job_for_document.assert_called_once_with(
+        workspace_id=workspace_context.workspace_id,
+        document_id=created.id,
+    )
+    assert result.document.status == "uploaded"
+    assert result.document.file_type == "md"
+    assert result.ingestion_job.status == "pending"
+    assert result.ingestion_job.document_id == created.id
 
 
 def test_upload_rejects_unsupported_extension(
     settings: Settings,
     workspace_context: WorkspaceContext,
 ) -> None:
-    service = DocumentService(MagicMock(), MagicMock(), settings)
+    service = DocumentService(MagicMock(), MagicMock(), settings, MagicMock())
 
     with pytest.raises(UnsupportedFileTypeError) as exc_info:
         service.upload(
@@ -95,7 +127,7 @@ def test_upload_rejects_file_over_max_size(
     settings: Settings,
     workspace_context: WorkspaceContext,
 ) -> None:
-    service = DocumentService(MagicMock(), MagicMock(), settings)
+    service = DocumentService(MagicMock(), MagicMock(), settings, MagicMock())
 
     with pytest.raises(FileTooLargeError) as exc_info:
         service.upload(
@@ -113,6 +145,7 @@ def test_upload_accepts_case_insensitive_extension(
 ) -> None:
     repository = MagicMock()
     storage = MagicMock()
+    ingestion_service = MagicMock()
     storage.save.return_value = "key"
 
     created = MagicMock()
@@ -126,13 +159,17 @@ def test_upload_accepts_case_insensitive_extension(
     created.created_at = "2026-07-06T00:00:00Z"
     created.updated_at = "2026-07-06T00:00:00Z"
     repository.create.return_value = created
+    ingestion_service.create_job_for_document.return_value = _ingestion_job_response(
+        workspace_id=workspace_context.workspace_id,
+        document_id=created.id,
+    )
 
-    service = DocumentService(repository, storage, settings)
+    service = DocumentService(repository, storage, settings, ingestion_service)
     result = service.upload(
         context=workspace_context,
         file_content=b"# Notes",
         filename="Notes.MD",
     )
 
-    assert result.file_type == "md"
+    assert result.document.file_type == "md"
     assert repository.create.call_args.kwargs["file_type"] == "md"

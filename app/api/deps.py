@@ -22,6 +22,8 @@ from app.modules.auth.repository import AuthRepository
 from app.modules.auth.service import AuthService
 from app.modules.documents.repository import DocumentRepository
 from app.modules.documents.service import DocumentService
+from app.modules.ingestion.job_repository import IngestionJobRepository
+from app.modules.ingestion.service import IngestionService
 from app.modules.users.models import User
 from app.modules.users.repository import UserRepository
 from app.modules.workspaces.context import WorkspaceContext
@@ -206,10 +208,12 @@ def get_document_service(
     settings: SettingsDep,
 ) -> DocumentService:
     """Provide DocumentService with repository and storage backend."""
+    ingestion_service = IngestionService(IngestionJobRepository(db))
     return DocumentService(
         DocumentRepository(db),
         create_storage_backend(settings),
         settings,
+        ingestion_service,
     )
 
 

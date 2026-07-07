@@ -5,15 +5,15 @@ from typing import Annotated
 from fastapi import APIRouter, File, Form, UploadFile, status
 
 from app.api.deps import DocumentServiceDep, RequireDocumentMutateDep
-from app.modules.documents.schemas import DocumentResponse
+from app.modules.documents.schemas import DocumentUploadResponse
 
 router = APIRouter(prefix="/workspaces", tags=["documents"])
 
 
 @router.post(
     "/{workspace_id}/documents",
-    response_model=DocumentResponse,
-    status_code=status.HTTP_201_CREATED,
+    response_model=DocumentUploadResponse,
+    status_code=status.HTTP_202_ACCEPTED,
 )
 async def upload_document(
     workspace_context: RequireDocumentMutateDep,
@@ -21,7 +21,7 @@ async def upload_document(
     file: Annotated[UploadFile, File()],
     title: Annotated[str | None, Form()] = None,
     source_type: Annotated[str | None, Form()] = None,
-) -> DocumentResponse:
+) -> DocumentUploadResponse:
     """Upload a supported document to the workspace."""
     content = await file.read()
     return document_service.upload(

@@ -1,5 +1,6 @@
 """API tests for document upload."""
 
+import importlib
 import io
 from pathlib import Path
 
@@ -58,6 +59,13 @@ def document_upload_context(postgres_url, minimal_env, monkeypatch, tmp_path):
     monkeypatch.setenv("STORAGE_PATH", str(storage_path))
     reset_settings_cache()
     reset_db_engine()
+
+    import app.infrastructure.celery_app as celery_app_module
+
+    importlib.reload(celery_app_module)
+    celery_app_module.celery_app.conf.task_always_eager = True
+    celery_app_module.celery_app.conf.task_eager_propagates = True
+    importlib.reload(importlib.import_module("app.modules.ingestion.tasks"))
 
     alembic_cfg = Config(str(REPO_ROOT / "alembic.ini"))
     command.upgrade(alembic_cfg, "head")
@@ -127,7 +135,9 @@ def _invite_member(
     assert response.status_code == 201
 
 
-def test_member_upload_markdown_returns_201_uploaded(document_upload_context) -> None:
+def test_member_upload_markdown_returns_202_with_ingestion_job(
+    document_upload_context,
+) -> None:
     client, db_session, storage_path = document_upload_context
     owner, owner_token = _register_user(
         client,
@@ -148,15 +158,20 @@ def test_member_upload_markdown_returns_201_uploaded(document_upload_context) ->
         files={"file": ("billing-api-runbook.md", io.BytesIO(file_content), "text/markdown")},
     )
 
-    assert response.status_code == 201
+    assert response.status_code == 202
     body = response.json()
-    assert body["title"] == "billing-api-runbook.md"
-    assert body["status"] == "uploaded"
-    assert body["file_type"] == "md"
-    assert body["workspace_id"] == workspace["id"]
-    assert body["uploaded_by"] == owner["id"]
+    document = body["document"]
+    ingestion_job = body["ingestion_job"]
+    assert document["title"] == "billing-api-runbook.md"
+    assert document["status"] in ("uploaded", "processing")
+    assert document["file_type"] == "md"
+    assert document["workspace_id"] == workspace["id"]
+    assert document["uploaded_by"] == owner["id"]
+    assert ingestion_job["document_id"] == document["id"]
+    assert ingestion_job["workspace_id"] == workspace["id"]
+    assert ingestion_job["status"] in ("pending", "processing")
 
-    row = db_session.execute(
+    doc_row = db_session.execute(
         text(
             """
             SELECT status, storage_key, workspace_id
@@ -164,12 +179,26 @@ def test_member_upload_markdown_returns_201_uploaded(document_upload_context) ->
             WHERE id = :document_id
             """
         ),
-        {"document_id": body["id"]},
+        {"document_id": document["id"]},
     ).one()
-    assert row.status == "uploaded"
-    assert str(row.workspace_id) == workspace["id"]
-    assert row.storage_key
-    assert (storage_path / row.storage_key).read_bytes() == file_content
+    assert doc_row.status in ("uploaded", "processing")
+    assert str(doc_row.workspace_id) == workspace["id"]
+    assert doc_row.storage_key
+    assert (storage_path / doc_row.storage_key).read_bytes() == file_content
+
+    job_row = db_session.execute(
+        text(
+            """
+            SELECT status, document_id, workspace_id
+            FROM ingestion_jobs
+            WHERE id = :job_id
+            """
+        ),
+        {"job_id": ingestion_job["id"]},
+    ).one()
+    assert job_row.status in ("pending", "processing")
+    assert str(job_row.document_id) == document["id"]
+    assert str(job_row.workspace_id) == workspace["id"]
 
 
 def test_viewer_upload_returns_403(document_upload_context) -> None:

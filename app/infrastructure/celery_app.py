@@ -25,3 +25,4 @@ celery_app: Celery = Celery("atlasops")
 
 if os.getenv("REDIS_URL"):
     celery_app = create_celery_app()
+    import app.modules.ingestion.tasks  # noqa: E402, F401

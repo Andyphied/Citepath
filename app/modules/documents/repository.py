@@ -56,3 +56,15 @@ class DocumentRepository(WorkspaceScopedRepository[Document]):
         stmt = select(Document).order_by(Document.created_at.desc())
         stmt = self._scoped_filter(stmt, workspace_id)
         return list(self._session.scalars(stmt).all())
+
+    def update_status(
+        self,
+        *,
+        document: Document,
+        status: DocumentStatus,
+    ) -> Document:
+        """Update document status and commit."""
+        document.status = status
+        self._session.commit()
+        self._session.refresh(document)
+        return document

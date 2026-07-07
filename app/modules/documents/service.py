@@ -11,7 +11,8 @@ from app.modules.documents.exceptions import (
     UnsupportedFileTypeError,
 )
 from app.modules.documents.repository import DocumentRepository
-from app.modules.documents.schemas import DocumentResponse
+from app.modules.documents.schemas import DocumentResponse, DocumentUploadResponse
+from app.modules.ingestion.service import IngestionService
 from app.modules.workspaces.context import WorkspaceContext
 
 ALLOWED_EXTENSIONS = frozenset({"md", "txt", "pdf", "json"})
@@ -26,10 +27,12 @@ class DocumentService:
         document_repository: DocumentRepository,
         storage_backend: StorageBackend,
         settings: Settings,
+        ingestion_service: IngestionService,
     ) -> None:
         self._document_repository = document_repository
         self._storage_backend = storage_backend
         self._max_upload_bytes = settings.MAX_UPLOAD_BYTES
+        self._ingestion_service = ingestion_service
 
     def upload(
         self,
@@ -39,8 +42,8 @@ class DocumentService:
         filename: str,
         title: str | None = None,
         source_type: str | None = None,
-    ) -> DocumentResponse:
-        """Validate, store, and persist an uploaded document."""
+    ) -> DocumentUploadResponse:
+        """Validate, store, persist a document, and enqueue ingestion."""
         file_type = self._validate_extension(filename)
         self._validate_size(len(file_content))
 
@@ -63,7 +66,14 @@ class DocumentService:
             storage_key=storage_key,
             status=DocumentStatus.UPLOADED,
         )
-        return DocumentResponse.model_validate(document)
+        ingestion_job = self._ingestion_service.create_job_for_document(
+            workspace_id=context.workspace_id,
+            document_id=document.id,
+        )
+        return DocumentUploadResponse(
+            document=DocumentResponse.model_validate(document),
+            ingestion_job=ingestion_job,
+        )
 
     def _validate_extension(self, filename: str) -> str:
         suffix = Path(filename).suffix.lower().lstrip(".")
