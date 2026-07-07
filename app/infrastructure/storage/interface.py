@@ -17,3 +17,7 @@ class StorageBackend(Protocol):
     ) -> str:
         """Write content and return the storage key for the document."""
         ...
+
+    def get(self, storage_key: str) -> bytes:
+        """Read stored content by storage key."""
+        ...

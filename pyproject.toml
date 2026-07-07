@@ -19,6 +19,7 @@ dependencies = [
     "email-validator>=2.1.0",
     "structlog>=24.0.0",
     "python-multipart>=0.0.9",
+    "pypdf>=4.0.0",
 ]
 
 [project.optional-dependencies]

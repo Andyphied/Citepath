@@ -1,0 +1,1 @@
+Plain text incident note: database connection pool exhausted.

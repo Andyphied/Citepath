@@ -6,12 +6,52 @@ from uuid import UUID
 import structlog
 
 from app.infrastructure.celery_app import celery_app
+from app.infrastructure.config import get_settings
 from app.infrastructure.db.enums import DocumentStatus, IngestionJobStatus
 from app.infrastructure.db.session import get_session_factory
+from app.infrastructure.storage import create_storage_backend
+from app.infrastructure.storage.validation import reject_unsafe_storage_key
 from app.modules.documents.repository import DocumentRepository
+from app.modules.ingestion.extractors import (
+    ExtractionError,
+    extract_document_text,
+)
 from app.modules.ingestion.job_repository import IngestionJobRepository
+from app.modules.ingestion.pipeline import truncate_error_message
 
 logger = structlog.get_logger(__name__)
+
+
+def _fail_ingestion(
+    *,
+    job_repository: IngestionJobRepository,
+    document_repository: DocumentRepository,
+    job,
+    document,
+    error_message: str,
+    job_id: str,
+    document_id: str,
+    workspace_id: str,
+) -> None:
+    truncated_message = truncate_error_message(error_message)
+    completed_at = datetime.now(UTC)
+    job_repository.update(
+        job=job,
+        status=IngestionJobStatus.FAILED,
+        error_message=truncated_message,
+        completed_at=completed_at,
+    )
+    document_repository.update_status(
+        document=document,
+        status=DocumentStatus.FAILED,
+    )
+    logger.error(
+        "ingestion_extraction_failed",
+        job_id=job_id,
+        document_id=document_id,
+        workspace_id=workspace_id,
+        error_message=truncated_message,
+    )
 
 
 @celery_app.task(name="process_ingestion_job")
@@ -20,7 +60,7 @@ def process_ingestion_job(
     workspace_id: str,
     document_id: str,
 ) -> None:
-    """Pick up an ingestion job and run the pipeline (stub for ING-002+)."""
+    """Pick up an ingestion job, extract text, and prepare for chunking."""
     parsed_job_id = UUID(job_id)
     parsed_workspace_id = UUID(workspace_id)
     parsed_document_id = UUID(document_id)
@@ -94,7 +134,106 @@ def process_ingestion_job(
             workspace_id=workspace_id,
         )
 
-        # ING-002+ will extract, chunk, embed, and persist vectors here.
+        if not document.storage_key:
+            _fail_ingestion(
+                job_repository=job_repository,
+                document_repository=document_repository,
+                job=job,
+                document=document,
+                error_message="Document has no storage key",
+                job_id=job_id,
+                document_id=document_id,
+                workspace_id=workspace_id,
+            )
+            return
+
+        if not document.file_type:
+            _fail_ingestion(
+                job_repository=job_repository,
+                document_repository=document_repository,
+                job=job,
+                document=document,
+                error_message="Document has no file type",
+                job_id=job_id,
+                document_id=document_id,
+                workspace_id=workspace_id,
+            )
+            return
+
+        expected_storage_prefix = f"{workspace_id}/{document_id}/"
+        if not document.storage_key.startswith(expected_storage_prefix):
+            _fail_ingestion(
+                job_repository=job_repository,
+                document_repository=document_repository,
+                job=job,
+                document=document,
+                error_message="Storage key does not match document workspace",
+                job_id=job_id,
+                document_id=document_id,
+                workspace_id=workspace_id,
+            )
+            return
+
+        try:
+            reject_unsafe_storage_key(document.storage_key)
+        except ValueError as exc:
+            _fail_ingestion(
+                job_repository=job_repository,
+                document_repository=document_repository,
+                job=job,
+                document=document,
+                error_message=str(exc),
+                job_id=job_id,
+                document_id=document_id,
+                workspace_id=workspace_id,
+            )
+            return
+
+        settings = get_settings()
+        storage_backend = create_storage_backend(settings)
+
+        try:
+            file_content = storage_backend.get(document.storage_key)
+        except (FileNotFoundError, ValueError) as exc:
+            _fail_ingestion(
+                job_repository=job_repository,
+                document_repository=document_repository,
+                job=job,
+                document=document,
+                error_message=str(exc),
+                job_id=job_id,
+                document_id=document_id,
+                workspace_id=workspace_id,
+            )
+            return
+
+        try:
+            extraction_result = extract_document_text(
+                file_type=document.file_type,
+                content=file_content,
+            )
+        except ExtractionError as exc:
+            _fail_ingestion(
+                job_repository=job_repository,
+                document_repository=document_repository,
+                job=job,
+                document=document,
+                error_message=exc.message,
+                job_id=job_id,
+                document_id=document_id,
+                workspace_id=workspace_id,
+            )
+            return
+
+        logger.info(
+            "ingestion_extraction_completed",
+            job_id=job_id,
+            document_id=document_id,
+            workspace_id=workspace_id,
+            segment_count=len(extraction_result.segments),
+        )
+
+        # ING-003+ will chunk, embed, and persist vectors here.
     except Exception:
         session.rollback()
         raise

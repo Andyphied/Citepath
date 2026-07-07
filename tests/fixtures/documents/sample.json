@@ -1,0 +1,8 @@
+{
+  "title": "API outage summary",
+  "details": {
+    "summary": "Elevated 503 responses on checkout.",
+    "action": "Scale checkout pods to three replicas."
+  },
+  "count": 42
+}
