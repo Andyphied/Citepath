@@ -63,6 +63,18 @@ class Settings(BaseSettings):
     CHAT_MODEL: str = Field(default="gpt-4o-mini")
     RETRIEVAL_MIN_SCORE: float = Field(default=0.72, ge=0.0, le=1.0)
     MAX_UPLOAD_BYTES: int = Field(default=20_971_520, ge=1)
+    CHUNK_SIZE_TOKENS: int = Field(
+        default=1000,
+        ge=100,
+        le=5000,
+        description="Target token count per document chunk",
+    )
+    CHUNK_OVERLAP_TOKENS: int = Field(
+        default=150,
+        ge=0,
+        le=1000,
+        description="Token overlap between consecutive chunks",
+    )
     LOG_LEVEL: str = Field(default="INFO")
     ENVIRONMENT: Environment = Field(default=Environment.DEVELOPMENT)
     STORAGE_PATH: str = Field(
@@ -109,6 +121,11 @@ class Settings(BaseSettings):
         ):
             raise ValueError(
                 "ANTHROPIC_API_KEY is required when LLM_PROVIDER is anthropic"
+            )
+
+        if self.CHUNK_OVERLAP_TOKENS >= self.CHUNK_SIZE_TOKENS:
+            raise ValueError(
+                "CHUNK_OVERLAP_TOKENS must be less than CHUNK_SIZE_TOKENS"
             )
 
         return self

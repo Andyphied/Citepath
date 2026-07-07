@@ -116,3 +116,25 @@ def test_settings_ignores_unknown_env_vars(
     settings = Settings()
 
     assert not hasattr(settings, "UNKNOWN_FUTURE_VAR")
+
+
+def test_settings_chunk_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
+    _set_minimal_valid_env(monkeypatch)
+
+    settings = Settings()
+
+    assert settings.CHUNK_SIZE_TOKENS == 1000
+    assert settings.CHUNK_OVERLAP_TOKENS == 150
+
+
+def test_settings_rejects_overlap_greater_than_chunk_size(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_minimal_valid_env(monkeypatch)
+    monkeypatch.setenv("CHUNK_SIZE_TOKENS", "500")
+    monkeypatch.setenv("CHUNK_OVERLAP_TOKENS", "500")
+
+    with pytest.raises(ValidationError) as exc_info:
+        Settings()
+
+    assert "CHUNK_OVERLAP_TOKENS" in str(exc_info.value)

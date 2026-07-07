@@ -77,7 +77,10 @@ def test_process_ingestion_job_sets_processing_status(
 ) -> None:
     session = MagicMock()
     mock_session_factory.return_value = MagicMock(return_value=session)
-    mock_get_settings.return_value = MagicMock()
+    mock_get_settings.return_value = MagicMock(
+        CHUNK_SIZE_TOKENS=1000,
+        CHUNK_OVERLAP_TOKENS=150,
+    )
     storage_backend = MagicMock()
     storage_backend.get.return_value = (FIXTURES_DIR / "sample.txt").read_bytes()
     mock_create_storage_backend.return_value = storage_backend
@@ -120,6 +123,64 @@ def test_process_ingestion_job_sets_processing_status(
 @patch("app.modules.ingestion.tasks.create_storage_backend")
 @patch("app.modules.ingestion.tasks.get_settings")
 @patch("app.modules.ingestion.tasks.get_session_factory")
+def test_process_ingestion_job_completes_chunking(
+    mock_session_factory,
+    mock_get_settings,
+    mock_create_storage_backend,
+    job_id,
+    workspace_id,
+    document_id,
+) -> None:
+    session = MagicMock()
+    mock_session_factory.return_value = MagicMock(return_value=session)
+    mock_get_settings.return_value = MagicMock(
+        CHUNK_SIZE_TOKENS=1000,
+        CHUNK_OVERLAP_TOKENS=150,
+    )
+    storage_backend = MagicMock()
+    storage_backend.get.return_value = (FIXTURES_DIR / "sample.txt").read_bytes()
+    mock_create_storage_backend.return_value = storage_backend
+
+    job = _build_job(job_id=job_id, workspace_id=workspace_id, document_id=document_id)
+    document = _build_document(document_id=document_id, workspace_id=workspace_id)
+    document.title = "Sample Text"
+    document.source_type = "general"
+
+    job_repository = MagicMock()
+    job_repository.get_by_id.return_value = job
+    document_repository = MagicMock()
+    document_repository.get_by_id.return_value = document
+
+    with patch(
+        "app.modules.ingestion.tasks.IngestionJobRepository",
+        return_value=job_repository,
+    ), patch(
+        "app.modules.ingestion.tasks.DocumentRepository",
+        return_value=document_repository,
+    ), patch(
+        "app.modules.ingestion.tasks.chunk_extraction_result",
+    ) as mock_chunk:
+        mock_chunk.return_value = [MagicMock(chunk_index=0)]
+
+        process_ingestion_job(
+            str(job_id),
+            str(workspace_id),
+            str(document_id),
+        )
+
+    mock_chunk.assert_called_once()
+    chunk_kwargs = mock_chunk.call_args.kwargs
+    assert chunk_kwargs["workspace_id"] == workspace_id
+    assert chunk_kwargs["document_id"] == document_id
+    assert chunk_kwargs["document_title"] == "Sample Text"
+    assert chunk_kwargs["source_type"] == "general"
+    assert chunk_kwargs["chunk_size_tokens"] == 1000
+    assert chunk_kwargs["chunk_overlap_tokens"] == 150
+
+
+@patch("app.modules.ingestion.tasks.create_storage_backend")
+@patch("app.modules.ingestion.tasks.get_settings")
+@patch("app.modules.ingestion.tasks.get_session_factory")
 def test_process_ingestion_job_fails_on_corrupt_pdf(
     mock_session_factory,
     mock_get_settings,
@@ -130,7 +191,10 @@ def test_process_ingestion_job_fails_on_corrupt_pdf(
 ) -> None:
     session = MagicMock()
     mock_session_factory.return_value = MagicMock(return_value=session)
-    mock_get_settings.return_value = MagicMock()
+    mock_get_settings.return_value = MagicMock(
+        CHUNK_SIZE_TOKENS=1000,
+        CHUNK_OVERLAP_TOKENS=150,
+    )
     storage_backend = MagicMock()
     storage_backend.get.return_value = (FIXTURES_DIR / "corrupt.pdf").read_bytes()
     mock_create_storage_backend.return_value = storage_backend
@@ -264,7 +328,10 @@ def test_process_ingestion_job_fails_on_storage_key_prefix_mismatch(
 ) -> None:
     session = MagicMock()
     mock_session_factory.return_value = MagicMock(return_value=session)
-    mock_get_settings.return_value = MagicMock()
+    mock_get_settings.return_value = MagicMock(
+        CHUNK_SIZE_TOKENS=1000,
+        CHUNK_OVERLAP_TOKENS=150,
+    )
     mock_create_storage_backend.return_value = MagicMock()
 
     job = _build_job(job_id=job_id, workspace_id=workspace_id, document_id=document_id)
@@ -312,7 +379,10 @@ def test_process_ingestion_job_fails_on_invalid_storage_key(
 ) -> None:
     session = MagicMock()
     mock_session_factory.return_value = MagicMock(return_value=session)
-    mock_get_settings.return_value = MagicMock()
+    mock_get_settings.return_value = MagicMock(
+        CHUNK_SIZE_TOKENS=1000,
+        CHUNK_OVERLAP_TOKENS=150,
+    )
     storage_backend = MagicMock()
     storage_backend.get.side_effect = ValueError("Invalid storage key: ../../etc/passwd")
     mock_create_storage_backend.return_value = storage_backend

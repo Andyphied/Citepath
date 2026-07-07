@@ -12,6 +12,7 @@ from app.infrastructure.db.session import get_session_factory
 from app.infrastructure.storage import create_storage_backend
 from app.infrastructure.storage.validation import reject_unsafe_storage_key
 from app.modules.documents.repository import DocumentRepository
+from app.modules.ingestion.chunker import chunk_extraction_result
 from app.modules.ingestion.extractors import (
     ExtractionError,
     extract_document_text,
@@ -233,7 +234,25 @@ def process_ingestion_job(
             segment_count=len(extraction_result.segments),
         )
 
-        # ING-003+ will chunk, embed, and persist vectors here.
+        chunks = chunk_extraction_result(
+            extraction_result=extraction_result,
+            workspace_id=parsed_workspace_id,
+            document_id=parsed_document_id,
+            document_title=document.title or "untitled",
+            source_type=document.source_type or "general",
+            chunk_size_tokens=settings.CHUNK_SIZE_TOKENS,
+            chunk_overlap_tokens=settings.CHUNK_OVERLAP_TOKENS,
+        )
+
+        logger.info(
+            "ingestion_chunking_completed",
+            job_id=job_id,
+            document_id=document_id,
+            workspace_id=workspace_id,
+            chunk_count=len(chunks),
+        )
+
+        # ING-004+ will embed and persist vectors here.
     except Exception:
         session.rollback()
         raise
