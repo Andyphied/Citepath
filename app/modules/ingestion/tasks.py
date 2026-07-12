@@ -13,8 +13,10 @@ from app.infrastructure.storage import create_storage_backend
 from app.infrastructure.storage.validation import reject_unsafe_storage_key
 from app.modules.documents.repository import DocumentRepository
 from app.infrastructure.llm.factory import create_embedding_provider
+from app.modules.ingestion.chunk_storage import ChunkStorageError, persist_embedded_chunks
 from app.modules.ingestion.chunker import chunk_extraction_result
 from app.modules.ingestion.embeddings import EmbeddingError, embed_content_chunks
+from app.modules.ingestion.repository import IngestionRepository
 from app.modules.usage.service import UsageService
 from app.modules.ingestion.extractors import (
     ExtractionError,
@@ -290,8 +292,44 @@ def process_ingestion_job(
 
         session.commit()
 
-        # ING-005 will persist embedded chunks to pgvector here.
-        _ = embedded_chunks
+        ingestion_repository = IngestionRepository(session)
+        storage_result = persist_embedded_chunks(
+            ingestion_repository=ingestion_repository,
+            embedded_chunks=embedded_chunks,
+            workspace_id=parsed_workspace_id,
+            document_id=parsed_document_id,
+        )
+        if isinstance(storage_result, ChunkStorageError):
+            _fail_ingestion(
+                job_repository=job_repository,
+                document_repository=document_repository,
+                job=job,
+                document=document,
+                error_message=storage_result.message,
+                job_id=job_id,
+                document_id=document_id,
+                workspace_id=workspace_id,
+            )
+            return
+
+        completed_at = datetime.now(UTC)
+        job_repository.update(
+            job=job,
+            status=IngestionJobStatus.COMPLETED,
+            completed_at=completed_at,
+        )
+        document_repository.update_status(
+            document=document,
+            status=DocumentStatus.INDEXED,
+        )
+
+        logger.info(
+            "ingestion_storage_completed",
+            job_id=job_id,
+            document_id=document_id,
+            workspace_id=workspace_id,
+            chunk_count=storage_result,
+        )
     except Exception:
         session.rollback()
         raise

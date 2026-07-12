@@ -3,10 +3,11 @@
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.infrastructure.db.scoped_repository import WorkspaceScopedRepository
+from app.modules.ingestion.chunker import EmbeddedChunk
 from app.modules.ingestion.models import DocumentChunk
 
 
@@ -43,6 +44,39 @@ class IngestionRepository(WorkspaceScopedRepository[DocumentChunk]):
         self._session.commit()
         self._session.refresh(chunk)
         return chunk
+
+    def replace_chunks_for_document(
+        self,
+        *,
+        workspace_id: UUID,
+        document_id: UUID,
+        embedded_chunks: list[EmbeddedChunk],
+    ) -> list[DocumentChunk]:
+        """Delete existing chunks for a document and bulk-insert replacements."""
+        delete_stmt = delete(DocumentChunk).where(
+            DocumentChunk.workspace_id == workspace_id,
+            DocumentChunk.document_id == document_id,
+        )
+        self._session.execute(delete_stmt)
+
+        chunks = [
+            DocumentChunk(
+                workspace_id=workspace_id,
+                document_id=document_id,
+                chunk_index=embedded.chunk_index,
+                content=embedded.content,
+                embedding=embedded.embedding,
+                metadata_=embedded.metadata,
+                embedding_model=embedded.embedding_model,
+            )
+            for embedded in embedded_chunks
+        ]
+        if chunks:
+            self._session.add_all(chunks)
+        self._session.commit()
+        for chunk in chunks:
+            self._session.refresh(chunk)
+        return chunks
 
     def get_chunk_by_id(
         self,
