@@ -26,6 +26,17 @@ class ContentChunk:
 
 
 @dataclass(frozen=True)
+class EmbeddedChunk:
+    """A content chunk with generated embedding vectors."""
+
+    content: str
+    chunk_index: int
+    metadata: dict[str, Any]
+    embedding: list[float]
+    embedding_model: str
+
+
+@dataclass(frozen=True)
 class _ParagraphUnit:
     text: str
     page_number: int | None

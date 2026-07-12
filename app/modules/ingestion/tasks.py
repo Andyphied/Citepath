@@ -12,7 +12,10 @@ from app.infrastructure.db.session import get_session_factory
 from app.infrastructure.storage import create_storage_backend
 from app.infrastructure.storage.validation import reject_unsafe_storage_key
 from app.modules.documents.repository import DocumentRepository
+from app.infrastructure.llm.factory import create_embedding_provider
 from app.modules.ingestion.chunker import chunk_extraction_result
+from app.modules.ingestion.embeddings import EmbeddingError, embed_content_chunks
+from app.modules.usage.service import UsageService
 from app.modules.ingestion.extractors import (
     ExtractionError,
     extract_document_text,
@@ -47,7 +50,7 @@ def _fail_ingestion(
         status=DocumentStatus.FAILED,
     )
     logger.error(
-        "ingestion_extraction_failed",
+        "ingestion_job_failed",
         job_id=job_id,
         document_id=document_id,
         workspace_id=workspace_id,
@@ -252,7 +255,43 @@ def process_ingestion_job(
             chunk_count=len(chunks),
         )
 
-        # ING-004+ will embed and persist vectors here.
+        embedding_provider = create_embedding_provider(settings)
+        usage_service = UsageService(session)
+        embedded_chunks = embed_content_chunks(
+            chunks=chunks,
+            embedding_provider=embedding_provider,
+            usage_service=usage_service,
+            workspace_id=parsed_workspace_id,
+            document_id=parsed_document_id,
+            job_id=parsed_job_id,
+            batch_size=settings.EMBEDDING_BATCH_SIZE,
+            embedding_model=settings.EMBEDDING_MODEL,
+        )
+        if isinstance(embedded_chunks, EmbeddingError):
+            _fail_ingestion(
+                job_repository=job_repository,
+                document_repository=document_repository,
+                job=job,
+                document=document,
+                error_message=embedded_chunks.message,
+                job_id=job_id,
+                document_id=document_id,
+                workspace_id=workspace_id,
+            )
+            return
+
+        logger.info(
+            "ingestion_embedding_completed",
+            job_id=job_id,
+            document_id=document_id,
+            workspace_id=workspace_id,
+            chunk_count=len(embedded_chunks),
+        )
+
+        session.commit()
+
+        # ING-005 will persist embedded chunks to pgvector here.
+        _ = embedded_chunks
     except Exception:
         session.rollback()
         raise

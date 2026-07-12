@@ -1,0 +1,13 @@
+"""Shared types for LLM provider integrations."""
+
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class EmbeddingResult:
+    """Normalized embedding provider response."""
+
+    vectors: list[list[float]]
+    embedding_tokens: int
+    model: str
+    latency_ms: int

@@ -125,6 +125,7 @@ def test_settings_chunk_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
 
     assert settings.CHUNK_SIZE_TOKENS == 1000
     assert settings.CHUNK_OVERLAP_TOKENS == 150
+    assert settings.EMBEDDING_BATCH_SIZE == 64
 
 
 def test_settings_rejects_overlap_greater_than_chunk_size(

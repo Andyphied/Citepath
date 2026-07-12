@@ -75,6 +75,12 @@ class Settings(BaseSettings):
         le=1000,
         description="Token overlap between consecutive chunks",
     )
+    EMBEDDING_BATCH_SIZE: int = Field(
+        default=64,
+        ge=1,
+        le=2048,
+        description="Number of chunks per embedding API batch",
+    )
     LOG_LEVEL: str = Field(default="INFO")
     ENVIRONMENT: Environment = Field(default=Environment.DEVELOPMENT)
     STORAGE_PATH: str = Field(

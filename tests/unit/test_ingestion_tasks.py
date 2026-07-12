@@ -80,6 +80,8 @@ def test_process_ingestion_job_sets_processing_status(
     mock_get_settings.return_value = MagicMock(
         CHUNK_SIZE_TOKENS=1000,
         CHUNK_OVERLAP_TOKENS=150,
+        EMBEDDING_BATCH_SIZE=64,
+        EMBEDDING_MODEL="text-embedding-3-small",
     )
     storage_backend = MagicMock()
     storage_backend.get.return_value = (FIXTURES_DIR / "sample.txt").read_bytes()
@@ -99,6 +101,11 @@ def test_process_ingestion_job_sets_processing_status(
     ), patch(
         "app.modules.ingestion.tasks.DocumentRepository",
         return_value=document_repository,
+    ), patch(
+        "app.modules.ingestion.tasks.create_embedding_provider",
+    ), patch(
+        "app.modules.ingestion.tasks.embed_content_chunks",
+        return_value=[MagicMock(chunk_index=0)],
     ):
         process_ingestion_job(
             str(job_id),
@@ -136,6 +143,8 @@ def test_process_ingestion_job_completes_chunking(
     mock_get_settings.return_value = MagicMock(
         CHUNK_SIZE_TOKENS=1000,
         CHUNK_OVERLAP_TOKENS=150,
+        EMBEDDING_BATCH_SIZE=64,
+        EMBEDDING_MODEL="text-embedding-3-small",
     )
     storage_backend = MagicMock()
     storage_backend.get.return_value = (FIXTURES_DIR / "sample.txt").read_bytes()
@@ -159,8 +168,13 @@ def test_process_ingestion_job_completes_chunking(
         return_value=document_repository,
     ), patch(
         "app.modules.ingestion.tasks.chunk_extraction_result",
-    ) as mock_chunk:
+    ) as mock_chunk, patch(
+        "app.modules.ingestion.tasks.create_embedding_provider",
+    ), patch(
+        "app.modules.ingestion.tasks.embed_content_chunks",
+    ) as mock_embed:
         mock_chunk.return_value = [MagicMock(chunk_index=0)]
+        mock_embed.return_value = [MagicMock(chunk_index=0)]
 
         process_ingestion_job(
             str(job_id),
@@ -169,6 +183,7 @@ def test_process_ingestion_job_completes_chunking(
         )
 
     mock_chunk.assert_called_once()
+    mock_embed.assert_called_once()
     chunk_kwargs = mock_chunk.call_args.kwargs
     assert chunk_kwargs["workspace_id"] == workspace_id
     assert chunk_kwargs["document_id"] == document_id
@@ -194,6 +209,8 @@ def test_process_ingestion_job_fails_on_corrupt_pdf(
     mock_get_settings.return_value = MagicMock(
         CHUNK_SIZE_TOKENS=1000,
         CHUNK_OVERLAP_TOKENS=150,
+        EMBEDDING_BATCH_SIZE=64,
+        EMBEDDING_MODEL="text-embedding-3-small",
     )
     storage_backend = MagicMock()
     storage_backend.get.return_value = (FIXTURES_DIR / "corrupt.pdf").read_bytes()
@@ -331,6 +348,8 @@ def test_process_ingestion_job_fails_on_storage_key_prefix_mismatch(
     mock_get_settings.return_value = MagicMock(
         CHUNK_SIZE_TOKENS=1000,
         CHUNK_OVERLAP_TOKENS=150,
+        EMBEDDING_BATCH_SIZE=64,
+        EMBEDDING_MODEL="text-embedding-3-small",
     )
     mock_create_storage_backend.return_value = MagicMock()
 
@@ -382,6 +401,8 @@ def test_process_ingestion_job_fails_on_invalid_storage_key(
     mock_get_settings.return_value = MagicMock(
         CHUNK_SIZE_TOKENS=1000,
         CHUNK_OVERLAP_TOKENS=150,
+        EMBEDDING_BATCH_SIZE=64,
+        EMBEDDING_MODEL="text-embedding-3-small",
     )
     storage_backend = MagicMock()
     storage_backend.get.side_effect = ValueError("Invalid storage key: ../../etc/passwd")
@@ -537,3 +558,142 @@ def test_process_ingestion_job_fails_when_file_type_missing(
     failure_update = job_repository.update.call_args_list[1].kwargs
     assert failure_update["status"] == IngestionJobStatus.FAILED
     assert "no file type" in failure_update["error_message"].lower()
+
+
+@patch("app.modules.ingestion.tasks.create_storage_backend")
+@patch("app.modules.ingestion.tasks.get_settings")
+@patch("app.modules.ingestion.tasks.get_session_factory")
+def test_process_ingestion_job_completes_embedding(
+    mock_session_factory,
+    mock_get_settings,
+    mock_create_storage_backend,
+    job_id,
+    workspace_id,
+    document_id,
+) -> None:
+    session = MagicMock()
+    mock_session_factory.return_value = MagicMock(return_value=session)
+    mock_get_settings.return_value = MagicMock(
+        CHUNK_SIZE_TOKENS=1000,
+        CHUNK_OVERLAP_TOKENS=150,
+        EMBEDDING_BATCH_SIZE=64,
+        EMBEDDING_MODEL="text-embedding-3-small",
+    )
+    storage_backend = MagicMock()
+    storage_backend.get.return_value = (FIXTURES_DIR / "sample.txt").read_bytes()
+    mock_create_storage_backend.return_value = storage_backend
+
+    job = _build_job(job_id=job_id, workspace_id=workspace_id, document_id=document_id)
+    document = _build_document(document_id=document_id, workspace_id=workspace_id)
+    document.title = "Sample Text"
+    document.source_type = "general"
+
+    job_repository = MagicMock()
+    job_repository.get_by_id.return_value = job
+    document_repository = MagicMock()
+    document_repository.get_by_id.return_value = document
+
+    content_chunk = MagicMock(chunk_index=0)
+    embedded_chunk = MagicMock(chunk_index=0, embedding=[0.1, 0.2])
+
+    with patch(
+        "app.modules.ingestion.tasks.IngestionJobRepository",
+        return_value=job_repository,
+    ), patch(
+        "app.modules.ingestion.tasks.DocumentRepository",
+        return_value=document_repository,
+    ), patch(
+        "app.modules.ingestion.tasks.chunk_extraction_result",
+        return_value=[content_chunk],
+    ), patch(
+        "app.modules.ingestion.tasks.create_embedding_provider",
+    ) as mock_create_provider, patch(
+        "app.modules.ingestion.tasks.embed_content_chunks",
+        return_value=[embedded_chunk],
+    ) as mock_embed, patch(
+        "app.modules.ingestion.tasks.UsageService",
+    ) as mock_usage_service:
+        process_ingestion_job(
+            str(job_id),
+            str(workspace_id),
+            str(document_id),
+        )
+
+    mock_create_provider.assert_called_once()
+    mock_usage_service.assert_called_once_with(session)
+    embed_kwargs = mock_embed.call_args.kwargs
+    assert embed_kwargs["workspace_id"] == workspace_id
+    assert embed_kwargs["document_id"] == document_id
+    assert embed_kwargs["job_id"] == job_id
+    assert embed_kwargs["batch_size"] == 64
+    assert embed_kwargs["embedding_model"] == "text-embedding-3-small"
+    assert job_repository.update.call_count == 1
+    session.commit.assert_called_once()
+
+
+@patch("app.modules.ingestion.tasks.create_storage_backend")
+@patch("app.modules.ingestion.tasks.get_settings")
+@patch("app.modules.ingestion.tasks.get_session_factory")
+def test_process_ingestion_job_fails_on_embedding_error(
+    mock_session_factory,
+    mock_get_settings,
+    mock_create_storage_backend,
+    job_id,
+    workspace_id,
+    document_id,
+) -> None:
+    from app.modules.ingestion.embeddings import EmbeddingError
+
+    session = MagicMock()
+    mock_session_factory.return_value = MagicMock(return_value=session)
+    mock_get_settings.return_value = MagicMock(
+        CHUNK_SIZE_TOKENS=1000,
+        CHUNK_OVERLAP_TOKENS=150,
+        EMBEDDING_BATCH_SIZE=64,
+        EMBEDDING_MODEL="text-embedding-3-small",
+    )
+    storage_backend = MagicMock()
+    storage_backend.get.return_value = (FIXTURES_DIR / "sample.txt").read_bytes()
+    mock_create_storage_backend.return_value = storage_backend
+
+    job = _build_job(job_id=job_id, workspace_id=workspace_id, document_id=document_id)
+    document = _build_document(document_id=document_id, workspace_id=workspace_id)
+    document.title = "Sample Text"
+    document.source_type = "general"
+
+    job_repository = MagicMock()
+    job_repository.get_by_id.return_value = job
+    document_repository = MagicMock()
+    document_repository.get_by_id.return_value = document
+
+    with patch(
+        "app.modules.ingestion.tasks.IngestionJobRepository",
+        return_value=job_repository,
+    ), patch(
+        "app.modules.ingestion.tasks.DocumentRepository",
+        return_value=document_repository,
+    ), patch(
+        "app.modules.ingestion.tasks.chunk_extraction_result",
+        return_value=[MagicMock(chunk_index=0)],
+    ), patch(
+        "app.modules.ingestion.tasks.create_embedding_provider",
+    ), patch(
+        "app.modules.ingestion.tasks.embed_content_chunks",
+        return_value=EmbeddingError(message="provider timeout"),
+    ), patch(
+        "app.modules.ingestion.tasks.UsageService",
+    ):
+        process_ingestion_job(
+            str(job_id),
+            str(workspace_id),
+            str(document_id),
+        )
+
+    assert job_repository.update.call_count == 2
+    failure_update = job_repository.update.call_args_list[1].kwargs
+    assert failure_update["status"] == IngestionJobStatus.FAILED
+    assert "provider timeout" in failure_update["error_message"]
+    document_repository.update_status.assert_any_call(
+        document=document,
+        status=DocumentStatus.FAILED,
+    )
