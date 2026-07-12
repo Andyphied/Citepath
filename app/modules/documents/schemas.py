@@ -29,3 +29,12 @@ class DocumentUploadResponse(BaseModel):
 
     document: DocumentResponse
     ingestion_job: IngestionJobResponse
+
+
+class DocumentListResponse(BaseModel):
+    """Paginated workspace document list."""
+
+    items: list[DocumentResponse]
+    total: int
+    page: int
+    page_size: int

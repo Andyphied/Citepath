@@ -3,7 +3,7 @@
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.infrastructure.db.enums import DocumentStatus
@@ -56,6 +56,35 @@ class DocumentRepository(WorkspaceScopedRepository[Document]):
         stmt = select(Document).order_by(Document.created_at.desc())
         stmt = self._scoped_filter(stmt, workspace_id)
         return list(self._session.scalars(stmt).all())
+
+    def list_for_workspace_paginated(
+        self,
+        *,
+        workspace_id: UUID,
+        page: int,
+        page_size: int,
+        status: DocumentStatus | None = None,
+    ) -> tuple[list[Document], int]:
+        """Return a paginated document list and total count for a workspace."""
+        conditions = [Document.workspace_id == workspace_id]
+        if status is not None:
+            conditions.append(Document.status == status)
+
+        total = self._session.scalar(
+            select(func.count()).select_from(Document).where(*conditions)
+        )
+        total = int(total or 0)
+
+        offset = (page - 1) * page_size
+        stmt = (
+            select(Document)
+            .where(*conditions)
+            .order_by(Document.created_at.desc())
+            .offset(offset)
+            .limit(page_size)
+        )
+        items = list(self._session.scalars(stmt).all())
+        return items, total
 
     def update_status(
         self,

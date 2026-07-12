@@ -202,6 +202,11 @@ RequireDocumentMutateDep = Annotated[
     Depends(require_permission(PermissionAction.DOCUMENT_MUTATE)),
 ]
 
+RequireViewDocumentsDep = Annotated[
+    WorkspaceContext,
+    Depends(require_permission(PermissionAction.VIEW_DOCUMENTS)),
+]
+
 
 def get_document_service(
     db: DbSession,

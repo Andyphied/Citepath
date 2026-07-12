@@ -11,7 +11,11 @@ from app.modules.documents.exceptions import (
     UnsupportedFileTypeError,
 )
 from app.modules.documents.repository import DocumentRepository
-from app.modules.documents.schemas import DocumentResponse, DocumentUploadResponse
+from app.modules.documents.schemas import (
+    DocumentListResponse,
+    DocumentResponse,
+    DocumentUploadResponse,
+)
 from app.modules.ingestion.service import IngestionService
 from app.modules.workspaces.context import WorkspaceContext
 
@@ -73,6 +77,28 @@ class DocumentService:
         return DocumentUploadResponse(
             document=DocumentResponse.model_validate(document),
             ingestion_job=ingestion_job,
+        )
+
+    def list_documents(
+        self,
+        *,
+        context: WorkspaceContext,
+        page: int,
+        page_size: int,
+        status: DocumentStatus | None = None,
+    ) -> DocumentListResponse:
+        """Return paginated documents for the workspace."""
+        documents, total = self._document_repository.list_for_workspace_paginated(
+            workspace_id=context.workspace_id,
+            page=page,
+            page_size=page_size,
+            status=status,
+        )
+        return DocumentListResponse(
+            items=[DocumentResponse.model_validate(document) for document in documents],
+            total=total,
+            page=page,
+            page_size=page_size,
         )
 
     def _validate_extension(self, filename: str) -> str:

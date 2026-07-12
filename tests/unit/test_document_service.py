@@ -9,6 +9,7 @@ import pytest
 from app.infrastructure.config import Settings
 from app.infrastructure.db.enums import DocumentStatus, WorkspaceRole
 from app.modules.documents.exceptions import FileTooLargeError, UnsupportedFileTypeError
+from app.modules.documents.schemas import DocumentListResponse
 from app.modules.documents.service import DocumentService
 from app.modules.ingestion.schemas import IngestionJobResponse
 from app.modules.workspaces.context import WorkspaceContext
@@ -173,3 +174,47 @@ def test_upload_accepts_case_insensitive_extension(
 
     assert result.document.file_type == "md"
     assert repository.create.call_args.kwargs["file_type"] == "md"
+
+
+def test_list_documents_returns_paginated_response(
+    settings: Settings,
+    workspace_context: WorkspaceContext,
+) -> None:
+    repository = MagicMock()
+    documents = []
+    for index in range(2):
+        document = MagicMock()
+        document.id = uuid4()
+        document.workspace_id = workspace_context.workspace_id
+        document.uploaded_by = workspace_context.user_id
+        document.title = f"doc-{index}"
+        document.source_type = "general"
+        document.file_type = "md"
+        document.status = DocumentStatus.INDEXED
+        document.created_at = datetime.fromisoformat("2026-07-07T00:00:00+00:00")
+        document.updated_at = datetime.fromisoformat("2026-07-07T00:00:00+00:00")
+        documents.append(document)
+
+    repository.list_for_workspace_paginated.return_value = (documents, 5)
+    service = DocumentService(repository, MagicMock(), settings, MagicMock())
+
+    result = service.list_documents(
+        context=workspace_context,
+        page=2,
+        page_size=2,
+        status=DocumentStatus.INDEXED,
+    )
+
+    repository.list_for_workspace_paginated.assert_called_once_with(
+        workspace_id=workspace_context.workspace_id,
+        page=2,
+        page_size=2,
+        status=DocumentStatus.INDEXED,
+    )
+    assert isinstance(result, DocumentListResponse)
+    assert result.total == 5
+    assert result.page == 2
+    assert result.page_size == 2
+    assert len(result.items) == 2
+    assert result.items[0].title == "doc-0"
+    assert result.items[0].status == "indexed"
