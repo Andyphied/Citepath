@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.infrastructure.db.enums import IngestionJobStatus
@@ -45,6 +45,20 @@ class IngestionJobRepository(WorkspaceScopedRepository[IngestionJob]):
     ) -> IngestionJob | None:
         """Return a job by id within the given workspace, or None."""
         return super().get_by_id(workspace_id=workspace_id, id=id)
+
+    def delete_for_document(
+        self,
+        *,
+        workspace_id: UUID,
+        document_id: UUID,
+    ) -> None:
+        """Delete all ingestion jobs for a document in the workspace."""
+        delete_stmt = delete(IngestionJob).where(
+            IngestionJob.workspace_id == workspace_id,
+            IngestionJob.document_id == document_id,
+        )
+        self._session.execute(delete_stmt)
+        self._session.commit()
 
     def get_latest_for_document(
         self,

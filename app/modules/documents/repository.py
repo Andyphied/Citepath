@@ -86,6 +86,11 @@ class DocumentRepository(WorkspaceScopedRepository[Document]):
         items = list(self._session.scalars(stmt).all())
         return items, total
 
+    def delete(self, *, document: Document) -> None:
+        """Delete a document row and commit."""
+        self._session.delete(document)
+        self._session.commit()
+
     def update_status(
         self,
         *,

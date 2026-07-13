@@ -21,3 +21,7 @@ class StorageBackend(Protocol):
     def get(self, storage_key: str) -> bytes:
         """Read stored content by storage key."""
         ...
+
+    def delete(self, storage_key: str) -> None:
+        """Remove stored content by storage key."""
+        ...

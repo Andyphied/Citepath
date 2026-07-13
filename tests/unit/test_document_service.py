@@ -68,6 +68,7 @@ def _build_service(
     ingestion_service: MagicMock | None = None,
     job_repository: MagicMock | None = None,
     ingestion_repository: MagicMock | None = None,
+    audit_repository: MagicMock | None = None,
 ) -> DocumentService:
     return DocumentService(
         repository,
@@ -76,6 +77,7 @@ def _build_service(
         ingestion_service or MagicMock(),
         job_repository or MagicMock(),
         ingestion_repository or MagicMock(),
+        audit_repository or MagicMock(),
     )
 
 
@@ -422,3 +424,77 @@ def test_get_document_detail_raises_when_document_missing(
             context=workspace_context,
             document_id=uuid4(),
         )
+
+
+def test_delete_removes_chunks_jobs_document_storage_and_audits(
+    settings: Settings,
+    workspace_context: WorkspaceContext,
+) -> None:
+    document_id = uuid4()
+    document = MagicMock()
+    document.id = document_id
+    document.title = "runbook.md"
+    document.storage_key = f"{workspace_context.workspace_id}/{document_id}/runbook.md"
+
+    repository = MagicMock()
+    repository.get_by_id.return_value = document
+    storage = MagicMock()
+    ingestion_repository = MagicMock()
+    job_repository = MagicMock()
+    audit_repository = MagicMock()
+
+    service = _build_service(
+        repository,
+        settings,
+        storage=storage,
+        ingestion_repository=ingestion_repository,
+        job_repository=job_repository,
+        audit_repository=audit_repository,
+    )
+    service.delete(
+        context=workspace_context,
+        document_id=document_id,
+        ip_address="127.0.0.1",
+    )
+
+    repository.get_by_id.assert_called_once_with(
+        workspace_id=workspace_context.workspace_id,
+        id=document_id,
+    )
+    ingestion_repository.delete_chunks_for_document.assert_called_once_with(
+        workspace_id=workspace_context.workspace_id,
+        document_id=document_id,
+    )
+    job_repository.delete_for_document.assert_called_once_with(
+        workspace_id=workspace_context.workspace_id,
+        document_id=document_id,
+    )
+    audit_repository.create.assert_called_once_with(
+        workspace_id=workspace_context.workspace_id,
+        actor_user_id=workspace_context.user_id,
+        event_type="document.deleted",
+        metadata={
+            "document_id": str(document_id),
+            "title": "runbook.md",
+        },
+        ip_address="127.0.0.1",
+    )
+    repository.delete.assert_called_once_with(document=document)
+    storage.delete.assert_called_once_with(document.storage_key)
+
+
+def test_delete_raises_when_document_missing(
+    settings: Settings,
+    workspace_context: WorkspaceContext,
+) -> None:
+    repository = MagicMock()
+    repository.get_by_id.return_value = None
+    service = _build_service(repository, settings)
+
+    with pytest.raises(DocumentNotFoundError):
+        service.delete(
+            context=workspace_context,
+            document_id=uuid4(),
+        )
+
+    repository.delete.assert_not_called()

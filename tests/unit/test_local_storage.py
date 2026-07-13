@@ -87,3 +87,33 @@ def test_local_storage_get_rejects_embedded_parent_segments(tmp_path) -> None:
 
     with pytest.raises(ValueError, match="Invalid storage key"):
         backend.get(traversal_key)
+
+
+def test_local_storage_delete_removes_saved_file(tmp_path) -> None:
+    workspace_id = uuid4()
+    document_id = uuid4()
+    backend = LocalStorageBackend(str(tmp_path))
+
+    storage_key = backend.save(
+        workspace_id=workspace_id,
+        document_id=document_id,
+        filename="notes.txt",
+        content=b"stored bytes",
+    )
+    assert (tmp_path / storage_key).is_file()
+
+    backend.delete(storage_key)
+
+    assert (tmp_path / storage_key).exists() is False
+
+
+def test_local_storage_delete_is_noop_for_missing_key(tmp_path) -> None:
+    backend = LocalStorageBackend(str(tmp_path))
+    backend.delete("missing/key.txt")
+
+
+def test_local_storage_delete_rejects_path_traversal(tmp_path) -> None:
+    backend = LocalStorageBackend(str(tmp_path))
+
+    with pytest.raises(ValueError, match="Invalid storage key"):
+        backend.delete("../../etc/passwd")

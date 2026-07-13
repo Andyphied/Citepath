@@ -6,6 +6,7 @@ from uuid import UUID, uuid4
 from app.infrastructure.config import Settings
 from app.infrastructure.db.enums import DocumentStatus
 from app.infrastructure.storage.interface import StorageBackend
+from app.modules.audit.repository import AuditRepository
 from app.modules.documents.exceptions import (
     DocumentNotFoundError,
     FileTooLargeError,
@@ -27,6 +28,7 @@ from app.modules.workspaces.context import WorkspaceContext
 
 ALLOWED_EXTENSIONS = frozenset({"md", "txt", "pdf", "json"})
 DEFAULT_SOURCE_TYPE = "general"
+DOCUMENT_DELETED_EVENT = "document.deleted"
 
 
 class DocumentService:
@@ -40,6 +42,7 @@ class DocumentService:
         ingestion_service: IngestionService,
         ingestion_job_repository: IngestionJobRepository,
         ingestion_repository: IngestionRepository,
+        audit_repository: AuditRepository,
     ) -> None:
         self._document_repository = document_repository
         self._storage_backend = storage_backend
@@ -47,6 +50,7 @@ class DocumentService:
         self._ingestion_service = ingestion_service
         self._ingestion_job_repository = ingestion_job_repository
         self._ingestion_repository = ingestion_repository
+        self._audit_repository = audit_repository
 
     def upload(
         self,
@@ -156,6 +160,46 @@ class DocumentService:
             chunk_count=chunk_count,
             error_message=error_message,
         )
+
+    def delete(
+        self,
+        *,
+        context: WorkspaceContext,
+        document_id: UUID,
+        ip_address: str | None = None,
+    ) -> None:
+        """Delete a document, its chunks, ingestion jobs, storage file, and audit."""
+        document = self._document_repository.get_by_id(
+            workspace_id=context.workspace_id,
+            id=document_id,
+        )
+        if document is None:
+            raise DocumentNotFoundError()
+
+        storage_key = document.storage_key
+
+        self._ingestion_repository.delete_chunks_for_document(
+            workspace_id=context.workspace_id,
+            document_id=document_id,
+        )
+        self._ingestion_job_repository.delete_for_document(
+            workspace_id=context.workspace_id,
+            document_id=document_id,
+        )
+        self._audit_repository.create(
+            workspace_id=context.workspace_id,
+            actor_user_id=context.user_id,
+            event_type=DOCUMENT_DELETED_EVENT,
+            metadata={
+                "document_id": str(document_id),
+                "title": document.title,
+            },
+            ip_address=ip_address,
+        )
+        self._document_repository.delete(document=document)
+
+        if storage_key:
+            self._storage_backend.delete(storage_key)
 
     def _validate_extension(self, filename: str) -> str:
         suffix = Path(filename).suffix.lower().lstrip(".")

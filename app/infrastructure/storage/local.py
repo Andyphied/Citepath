@@ -41,3 +41,13 @@ class LocalStorageBackend:
         if not full_path.is_file():
             raise FileNotFoundError(f"Storage object not found: {storage_key}")
         return full_path.read_bytes()
+
+    def delete(self, storage_key: str) -> None:
+        """Remove a stored file if it exists."""
+        reject_unsafe_storage_key(storage_key)
+        full_path = (self._base_path / storage_key).resolve()
+        base_path = self._base_path.resolve()
+        if not full_path.is_relative_to(base_path):
+            raise ValueError(f"Invalid storage key: {storage_key}")
+        if full_path.is_file():
+            full_path.unlink()

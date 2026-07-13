@@ -56,6 +56,22 @@ async def get_document(
     )
 
 
+@router.delete(
+    "/{workspace_id}/documents/{document_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_document(
+    document_id: UUID,
+    workspace_context: RequireDocumentMutateDep,
+    document_service: DocumentServiceDep,
+) -> None:
+    """Delete a document and its stored content, chunks, and ingestion jobs."""
+    document_service.delete(
+        context=workspace_context,
+        document_id=document_id,
+    )
+
+
 @router.post(
     "/{workspace_id}/documents",
     response_model=DocumentUploadResponse,

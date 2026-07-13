@@ -222,6 +222,7 @@ def get_document_service(
         ingestion_service,
         IngestionJobRepository(db),
         IngestionRepository(db),
+        AuditRepository(db),
     )
 
 

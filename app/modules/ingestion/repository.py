@@ -45,6 +45,20 @@ class IngestionRepository(WorkspaceScopedRepository[DocumentChunk]):
         self._session.refresh(chunk)
         return chunk
 
+    def delete_chunks_for_document(
+        self,
+        *,
+        workspace_id: UUID,
+        document_id: UUID,
+    ) -> None:
+        """Delete all chunks for a document in the workspace."""
+        delete_stmt = delete(DocumentChunk).where(
+            DocumentChunk.workspace_id == workspace_id,
+            DocumentChunk.document_id == document_id,
+        )
+        self._session.execute(delete_stmt)
+        self._session.commit()
+
     def replace_chunks_for_document(
         self,
         *,
