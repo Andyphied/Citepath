@@ -2,6 +2,8 @@
 
 from uuid import UUID
 
+from app.modules.documents.sanitization import sanitize_ingestion_error_message
+from app.modules.ingestion.exceptions import IngestionJobNotFoundError
 from app.modules.ingestion.job_repository import IngestionJobRepository
 from app.modules.ingestion.schemas import IngestionJobResponse
 
@@ -33,3 +35,23 @@ class IngestionService:
             str(document_id),
         )
         return IngestionJobResponse.model_validate(job)
+
+    def get_job(
+        self,
+        *,
+        workspace_id: UUID,
+        job_id: UUID,
+    ) -> IngestionJobResponse:
+        """Return ingestion job metadata with sanitized error messages."""
+        job = self._job_repository.get_by_id(
+            workspace_id=workspace_id,
+            id=job_id,
+        )
+        if job is None:
+            raise IngestionJobNotFoundError()
+
+        response = IngestionJobResponse.model_validate(job)
+        sanitized_error = sanitize_ingestion_error_message(
+            response.error_message,
+        )
+        return response.model_copy(update={"error_message": sanitized_error})

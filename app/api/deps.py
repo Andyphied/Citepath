@@ -226,3 +226,11 @@ def get_document_service(
 
 
 DocumentServiceDep = Annotated[DocumentService, Depends(get_document_service)]
+
+
+def get_ingestion_service(db: DbSession) -> IngestionService:
+    """Provide IngestionService with job repository."""
+    return IngestionService(IngestionJobRepository(db))
+
+
+IngestionServiceDep = Annotated[IngestionService, Depends(get_ingestion_service)]

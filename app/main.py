@@ -18,7 +18,8 @@ from app.api.document_errors import (
     file_too_large_handler,
     unsupported_file_type_handler,
 )
-from app.api.routes import auth, documents, health, workspaces
+from app.api.ingestion_errors import ingestion_job_not_found_handler
+from app.api.routes import auth, documents, health, ingestion, workspaces
 from app.api.workspace_errors import (
     already_member_handler,
     duplicate_slug_handler,
@@ -42,6 +43,7 @@ from app.modules.documents.exceptions import (
     FileTooLargeError,
     UnsupportedFileTypeError,
 )
+from app.modules.ingestion.exceptions import IngestionJobNotFoundError
 from app.modules.observability.errors import (
     request_validation_exception_handler,
     unhandled_exception_handler,
@@ -83,6 +85,7 @@ def create_app() -> FastAPI:
     app.include_router(auth.router)
     app.include_router(workspaces.router)
     app.include_router(documents.router)
+    app.include_router(ingestion.router)
     app.add_exception_handler(DuplicateEmailError, duplicate_email_handler)
     app.add_exception_handler(InvalidCredentialsError, invalid_credentials_handler)
     app.add_exception_handler(RateLimitedError, rate_limited_handler)
@@ -99,6 +102,10 @@ def create_app() -> FastAPI:
     app.add_exception_handler(UnsupportedFileTypeError, unsupported_file_type_handler)
     app.add_exception_handler(FileTooLargeError, file_too_large_handler)
     app.add_exception_handler(DocumentNotFoundError, document_not_found_handler)
+    app.add_exception_handler(
+        IngestionJobNotFoundError,
+        ingestion_job_not_found_handler,
+    )
     app.add_exception_handler(
         RequestValidationError,
         request_validation_exception_handler,
