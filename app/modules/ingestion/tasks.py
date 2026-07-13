@@ -9,21 +9,21 @@ from app.infrastructure.celery_app import celery_app
 from app.infrastructure.config import get_settings
 from app.infrastructure.db.enums import DocumentStatus, IngestionJobStatus
 from app.infrastructure.db.session import get_session_factory
+from app.infrastructure.llm.factory import create_embedding_provider
 from app.infrastructure.storage import create_storage_backend
 from app.infrastructure.storage.validation import reject_unsafe_storage_key
 from app.modules.documents.repository import DocumentRepository
-from app.infrastructure.llm.factory import create_embedding_provider
 from app.modules.ingestion.chunk_storage import ChunkStorageError, persist_embedded_chunks
 from app.modules.ingestion.chunker import chunk_extraction_result
 from app.modules.ingestion.embeddings import EmbeddingError, embed_content_chunks
-from app.modules.ingestion.repository import IngestionRepository
-from app.modules.usage.service import UsageService
 from app.modules.ingestion.extractors import (
     ExtractionError,
     extract_document_text,
 )
 from app.modules.ingestion.job_repository import IngestionJobRepository
 from app.modules.ingestion.pipeline import truncate_error_message
+from app.modules.ingestion.repository import IngestionRepository
+from app.modules.usage.service import UsageService
 
 logger = structlog.get_logger(__name__)
 

@@ -1,7 +1,6 @@
 """Document routes."""
 
 from typing import Annotated
-
 from uuid import UUID
 
 from fastapi import APIRouter, File, Form, Query, UploadFile, status

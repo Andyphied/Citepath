@@ -77,7 +77,7 @@ def test_local_storage_get_rejects_embedded_parent_segments(tmp_path) -> None:
     document_b = uuid4()
     backend = LocalStorageBackend(str(tmp_path))
 
-    foreign_key = backend.save(
+    backend.save(
         workspace_id=workspace_b,
         document_id=document_b,
         filename="secret.txt",

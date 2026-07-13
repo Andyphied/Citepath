@@ -3,7 +3,6 @@
 from pathlib import Path
 from uuid import UUID
 
-from app.infrastructure.storage.interface import StorageBackend
 from app.infrastructure.storage.validation import reject_unsafe_storage_key
 
 

@@ -30,13 +30,6 @@ from app.api.workspace_errors import (
 )
 from app.infrastructure.config import get_settings
 from app.infrastructure.rate_limit import RateLimitedError
-from app.modules.observability.errors import (
-    request_validation_exception_handler,
-    unhandled_exception_handler,
-)
-from app.modules.observability.logging import configure_logging
-from app.modules.observability.middleware import RequestIdMiddleware
-from app.modules.observability.request_logging import RequestLoggingMiddleware
 from app.modules.auth.exceptions import (
     DuplicateEmailError,
     InvalidCredentialsError,
@@ -49,6 +42,13 @@ from app.modules.documents.exceptions import (
     FileTooLargeError,
     UnsupportedFileTypeError,
 )
+from app.modules.observability.errors import (
+    request_validation_exception_handler,
+    unhandled_exception_handler,
+)
+from app.modules.observability.logging import configure_logging
+from app.modules.observability.middleware import RequestIdMiddleware
+from app.modules.observability.request_logging import RequestLoggingMiddleware
 from app.modules.workspaces.exceptions import (
     AlreadyMemberError,
     DuplicateSlugError,

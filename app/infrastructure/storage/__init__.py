@@ -1,6 +1,7 @@
 """Document storage adapters."""
 
-from app.infrastructure.config import Settings, StorageBackend as StorageBackendKind
+from app.infrastructure.config import Settings
+from app.infrastructure.config import StorageBackend as StorageBackendKind
 from app.infrastructure.storage.interface import StorageBackend
 from app.infrastructure.storage.local import LocalStorageBackend
 

@@ -8,6 +8,7 @@ import pytest
 
 from app.infrastructure.db.enums import WorkspaceRole
 from app.modules.users.models import User
+from app.modules.workspaces.context import WorkspaceContext
 from app.modules.workspaces.exceptions import (
     AlreadyMemberError,
     DuplicateSlugError,
@@ -17,7 +18,6 @@ from app.modules.workspaces.exceptions import (
     UserNotFoundError,
     WorkspaceForbiddenError,
 )
-from app.modules.workspaces.context import WorkspaceContext
 from app.modules.workspaces.models import Workspace, WorkspaceMember
 from app.modules.workspaces.service import WorkspaceService
 

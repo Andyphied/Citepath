@@ -3,8 +3,8 @@
 import json
 import logging
 
-from fastapi.testclient import TestClient
 import structlog
+from fastapi.testclient import TestClient
 
 from app.main import create_app
 from app.modules.observability.request_context import REQUEST_ID_HEADER
