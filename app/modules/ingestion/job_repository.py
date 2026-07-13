@@ -3,6 +3,7 @@
 from datetime import datetime
 from uuid import UUID
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.infrastructure.db.enums import IngestionJobStatus
@@ -44,6 +45,22 @@ class IngestionJobRepository(WorkspaceScopedRepository[IngestionJob]):
     ) -> IngestionJob | None:
         """Return a job by id within the given workspace, or None."""
         return super().get_by_id(workspace_id=workspace_id, id=id)
+
+    def get_latest_for_document(
+        self,
+        *,
+        workspace_id: UUID,
+        document_id: UUID,
+    ) -> IngestionJob | None:
+        """Return the most recent ingestion job for a document in the workspace."""
+        stmt = (
+            select(IngestionJob)
+            .where(IngestionJob.document_id == document_id)
+            .order_by(IngestionJob.created_at.desc())
+            .limit(1)
+        )
+        stmt = self._scoped_filter(stmt, workspace_id)
+        return self._session.scalar(stmt)
 
     def update(
         self,

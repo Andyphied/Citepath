@@ -23,6 +23,7 @@ from app.modules.auth.service import AuthService
 from app.modules.documents.repository import DocumentRepository
 from app.modules.documents.service import DocumentService
 from app.modules.ingestion.job_repository import IngestionJobRepository
+from app.modules.ingestion.repository import IngestionRepository
 from app.modules.ingestion.service import IngestionService
 from app.modules.users.models import User
 from app.modules.users.repository import UserRepository
@@ -219,6 +220,8 @@ def get_document_service(
         create_storage_backend(settings),
         settings,
         ingestion_service,
+        IngestionJobRepository(db),
+        IngestionRepository(db),
     )
 
 

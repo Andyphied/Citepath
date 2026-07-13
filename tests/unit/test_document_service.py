@@ -8,8 +8,12 @@ import pytest
 
 from app.infrastructure.config import Settings
 from app.infrastructure.db.enums import DocumentStatus, WorkspaceRole
-from app.modules.documents.exceptions import FileTooLargeError, UnsupportedFileTypeError
-from app.modules.documents.schemas import DocumentListResponse
+from app.modules.documents.exceptions import (
+    DocumentNotFoundError,
+    FileTooLargeError,
+    UnsupportedFileTypeError,
+)
+from app.modules.documents.schemas import DocumentDetailResponse, DocumentListResponse
 from app.modules.documents.service import DocumentService
 from app.modules.ingestion.schemas import IngestionJobResponse
 from app.modules.workspaces.context import WorkspaceContext
@@ -56,6 +60,25 @@ def _ingestion_job_response(
     )
 
 
+def _build_service(
+    repository: MagicMock,
+    settings: Settings,
+    *,
+    storage: MagicMock | None = None,
+    ingestion_service: MagicMock | None = None,
+    job_repository: MagicMock | None = None,
+    ingestion_repository: MagicMock | None = None,
+) -> DocumentService:
+    return DocumentService(
+        repository,
+        storage or MagicMock(),
+        settings,
+        ingestion_service or MagicMock(),
+        job_repository or MagicMock(),
+        ingestion_repository or MagicMock(),
+    )
+
+
 def test_upload_persists_document_and_creates_ingestion_job(
     settings: Settings,
     workspace_context: WorkspaceContext,
@@ -83,7 +106,12 @@ def test_upload_persists_document_and_creates_ingestion_job(
     )
     ingestion_service.create_job_for_document.return_value = job_response
 
-    service = DocumentService(repository, storage, settings, ingestion_service)
+    service = _build_service(
+        repository,
+        settings,
+        storage=storage,
+        ingestion_service=ingestion_service,
+    )
     result = service.upload(
         context=workspace_context,
         file_content=b"# Runbook",
@@ -112,7 +140,7 @@ def test_upload_rejects_unsupported_extension(
     settings: Settings,
     workspace_context: WorkspaceContext,
 ) -> None:
-    service = DocumentService(MagicMock(), MagicMock(), settings, MagicMock())
+    service = _build_service(MagicMock(), settings)
 
     with pytest.raises(UnsupportedFileTypeError) as exc_info:
         service.upload(
@@ -128,7 +156,7 @@ def test_upload_rejects_file_over_max_size(
     settings: Settings,
     workspace_context: WorkspaceContext,
 ) -> None:
-    service = DocumentService(MagicMock(), MagicMock(), settings, MagicMock())
+    service = _build_service(MagicMock(), settings)
 
     with pytest.raises(FileTooLargeError) as exc_info:
         service.upload(
@@ -165,7 +193,12 @@ def test_upload_accepts_case_insensitive_extension(
         document_id=created.id,
     )
 
-    service = DocumentService(repository, storage, settings, ingestion_service)
+    service = _build_service(
+        repository,
+        settings,
+        storage=storage,
+        ingestion_service=ingestion_service,
+    )
     result = service.upload(
         context=workspace_context,
         file_content=b"# Notes",
@@ -196,7 +229,7 @@ def test_list_documents_returns_paginated_response(
         documents.append(document)
 
     repository.list_for_workspace_paginated.return_value = (documents, 5)
-    service = DocumentService(repository, MagicMock(), settings, MagicMock())
+    service = _build_service(repository, settings)
 
     result = service.list_documents(
         context=workspace_context,
@@ -218,3 +251,174 @@ def test_list_documents_returns_paginated_response(
     assert len(result.items) == 2
     assert result.items[0].title == "doc-0"
     assert result.items[0].status == "indexed"
+
+
+def test_get_document_detail_returns_chunk_count_for_indexed_document(
+    settings: Settings,
+    workspace_context: WorkspaceContext,
+) -> None:
+    document_id = uuid4()
+    document = MagicMock()
+    document.id = document_id
+    document.workspace_id = workspace_context.workspace_id
+    document.uploaded_by = workspace_context.user_id
+    document.title = "indexed-doc.md"
+    document.source_type = "general"
+    document.file_type = "md"
+    document.status = DocumentStatus.INDEXED
+    document.created_at = datetime.fromisoformat("2026-07-07T00:00:00+00:00")
+    document.updated_at = datetime.fromisoformat("2026-07-07T00:00:00+00:00")
+
+    repository = MagicMock()
+    repository.get_by_id.return_value = document
+
+    latest_job = MagicMock()
+    latest_job.id = uuid4()
+    latest_job.workspace_id = workspace_context.workspace_id
+    latest_job.document_id = document_id
+    latest_job.status = "completed"
+    latest_job.attempt_count = 1
+    latest_job.error_message = None
+    latest_job.started_at = datetime.fromisoformat("2026-07-07T00:00:01+00:00")
+    latest_job.completed_at = datetime.fromisoformat("2026-07-07T00:00:02+00:00")
+    latest_job.created_at = datetime.fromisoformat("2026-07-07T00:00:00+00:00")
+
+    job_repository = MagicMock()
+    job_repository.get_latest_for_document.return_value = latest_job
+    ingestion_repository = MagicMock()
+    ingestion_repository.count_chunks_for_document.return_value = 4
+
+    service = _build_service(
+        repository,
+        settings,
+        job_repository=job_repository,
+        ingestion_repository=ingestion_repository,
+    )
+    result = service.get_document_detail(
+        context=workspace_context,
+        document_id=document_id,
+    )
+
+    assert isinstance(result, DocumentDetailResponse)
+    assert result.document.status == "indexed"
+    assert result.chunk_count == 4
+    assert result.error_message is None
+    assert result.latest_job is not None
+    assert result.latest_job.status == "completed"
+
+
+def test_get_document_detail_returns_error_message_for_failed_document(
+    settings: Settings,
+    workspace_context: WorkspaceContext,
+) -> None:
+    document_id = uuid4()
+    document = MagicMock()
+    document.id = document_id
+    document.workspace_id = workspace_context.workspace_id
+    document.uploaded_by = workspace_context.user_id
+    document.title = "failed-doc.pdf"
+    document.source_type = "general"
+    document.file_type = "pdf"
+    document.status = DocumentStatus.FAILED
+    document.created_at = datetime.fromisoformat("2026-07-07T00:00:00+00:00")
+    document.updated_at = datetime.fromisoformat("2026-07-07T00:00:00+00:00")
+
+    repository = MagicMock()
+    repository.get_by_id.return_value = document
+
+    latest_job = MagicMock()
+    latest_job.id = uuid4()
+    latest_job.workspace_id = workspace_context.workspace_id
+    latest_job.document_id = document_id
+    latest_job.status = "failed"
+    latest_job.attempt_count = 1
+    latest_job.error_message = "PDF contains no pages"
+    latest_job.started_at = datetime.fromisoformat("2026-07-07T00:00:01+00:00")
+    latest_job.completed_at = datetime.fromisoformat("2026-07-07T00:00:02+00:00")
+    latest_job.created_at = datetime.fromisoformat("2026-07-07T00:00:00+00:00")
+
+    job_repository = MagicMock()
+    job_repository.get_latest_for_document.return_value = latest_job
+
+    service = _build_service(
+        repository,
+        settings,
+        job_repository=job_repository,
+    )
+    result = service.get_document_detail(
+        context=workspace_context,
+        document_id=document_id,
+    )
+
+    assert result.document.status == "failed"
+    assert result.error_message == "PDF contains no pages"
+    assert result.chunk_count is None
+    assert result.latest_job is not None
+    assert result.latest_job.error_message == "PDF contains no pages"
+
+
+def test_get_document_detail_sanitizes_path_bearing_error_message(
+    settings: Settings,
+    workspace_context: WorkspaceContext,
+) -> None:
+    document_id = uuid4()
+    document = MagicMock()
+    document.id = document_id
+    document.workspace_id = workspace_context.workspace_id
+    document.uploaded_by = workspace_context.user_id
+    document.title = "failed-doc.pdf"
+    document.source_type = "general"
+    document.file_type = "pdf"
+    document.status = DocumentStatus.FAILED
+    document.created_at = datetime.fromisoformat("2026-07-07T00:00:00+00:00")
+    document.updated_at = datetime.fromisoformat("2026-07-07T00:00:00+00:00")
+
+    repository = MagicMock()
+    repository.get_by_id.return_value = document
+
+    storage_path = (
+        f"{workspace_context.workspace_id}/{document_id}/failed-doc.pdf"
+    )
+    latest_job = MagicMock()
+    latest_job.id = uuid4()
+    latest_job.workspace_id = workspace_context.workspace_id
+    latest_job.document_id = document_id
+    latest_job.status = "failed"
+    latest_job.attempt_count = 1
+    latest_job.error_message = f"Storage object not found: {storage_path}"
+    latest_job.started_at = datetime.fromisoformat("2026-07-07T00:00:01+00:00")
+    latest_job.completed_at = datetime.fromisoformat("2026-07-07T00:00:02+00:00")
+    latest_job.created_at = datetime.fromisoformat("2026-07-07T00:00:00+00:00")
+
+    job_repository = MagicMock()
+    job_repository.get_latest_for_document.return_value = latest_job
+
+    service = _build_service(
+        repository,
+        settings,
+        job_repository=job_repository,
+    )
+    result = service.get_document_detail(
+        context=workspace_context,
+        document_id=document_id,
+    )
+
+    assert result.error_message == "Stored file could not be read"
+    assert result.latest_job is not None
+    assert result.latest_job.error_message == "Stored file could not be read"
+    assert storage_path not in (result.error_message or "")
+
+
+def test_get_document_detail_raises_when_document_missing(
+    settings: Settings,
+    workspace_context: WorkspaceContext,
+) -> None:
+    repository = MagicMock()
+    repository.get_by_id.return_value = None
+    service = _build_service(repository, settings)
+
+    with pytest.raises(DocumentNotFoundError):
+        service.get_document_detail(
+            context=workspace_context,
+            document_id=uuid4(),
+        )

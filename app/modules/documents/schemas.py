@@ -38,3 +38,12 @@ class DocumentListResponse(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class DocumentDetailResponse(BaseModel):
+    """Document metadata with ingestion context."""
+
+    document: DocumentResponse
+    latest_job: IngestionJobResponse | None = None
+    chunk_count: int | None = None
+    error_message: str | None = None

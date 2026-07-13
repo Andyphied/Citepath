@@ -16,3 +16,7 @@ class FileTooLargeError(Exception):
         self.max_bytes = max_bytes
         self.actual_bytes = actual_bytes
         super().__init__()
+
+
+class DocumentNotFoundError(Exception):
+    """Raised when a document is missing or not in the requested workspace."""

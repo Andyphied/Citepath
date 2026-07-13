@@ -2,6 +2,8 @@
 
 from typing import Annotated
 
+from uuid import UUID
+
 from fastapi import APIRouter, File, Form, Query, UploadFile, status
 
 from app.api.deps import (
@@ -10,7 +12,11 @@ from app.api.deps import (
     RequireViewDocumentsDep,
 )
 from app.infrastructure.db.enums import DocumentStatus
-from app.modules.documents.schemas import DocumentListResponse, DocumentUploadResponse
+from app.modules.documents.schemas import (
+    DocumentDetailResponse,
+    DocumentListResponse,
+    DocumentUploadResponse,
+)
 
 router = APIRouter(prefix="/workspaces", tags=["documents"])
 
@@ -32,6 +38,22 @@ async def list_documents(
         page=page,
         page_size=page_size,
         status=status,
+    )
+
+
+@router.get(
+    "/{workspace_id}/documents/{document_id}",
+    response_model=DocumentDetailResponse,
+)
+async def get_document(
+    document_id: UUID,
+    workspace_context: RequireViewDocumentsDep,
+    document_service: DocumentServiceDep,
+) -> DocumentDetailResponse:
+    """Return document details including ingestion status and chunk count."""
+    return document_service.get_document_detail(
+        context=workspace_context,
+        document_id=document_id,
     )
 
 

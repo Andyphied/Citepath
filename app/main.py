@@ -14,6 +14,7 @@ from app.api.auth_errors import (
     unauthorized_handler,
 )
 from app.api.document_errors import (
+    document_not_found_handler,
     file_too_large_handler,
     unsupported_file_type_handler,
 )
@@ -43,7 +44,11 @@ from app.modules.auth.exceptions import (
     TokenInvalidError,
     UnauthorizedError,
 )
-from app.modules.documents.exceptions import FileTooLargeError, UnsupportedFileTypeError
+from app.modules.documents.exceptions import (
+    DocumentNotFoundError,
+    FileTooLargeError,
+    UnsupportedFileTypeError,
+)
 from app.modules.workspaces.exceptions import (
     AlreadyMemberError,
     DuplicateSlugError,
@@ -93,6 +98,7 @@ def create_app() -> FastAPI:
     app.add_exception_handler(LastOwnerError, last_owner_handler)
     app.add_exception_handler(UnsupportedFileTypeError, unsupported_file_type_handler)
     app.add_exception_handler(FileTooLargeError, file_too_large_handler)
+    app.add_exception_handler(DocumentNotFoundError, document_not_found_handler)
     app.add_exception_handler(
         RequestValidationError,
         request_validation_exception_handler,

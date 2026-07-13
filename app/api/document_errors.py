@@ -2,7 +2,11 @@
 
 from fastapi import Request, status
 
-from app.modules.documents.exceptions import FileTooLargeError, UnsupportedFileTypeError
+from app.modules.documents.exceptions import (
+    DocumentNotFoundError,
+    FileTooLargeError,
+    UnsupportedFileTypeError,
+)
 from app.modules.observability.errors import error_response
 
 
@@ -37,4 +41,17 @@ async def file_too_large_handler(
             "max_bytes": exc.max_bytes,
             "actual_bytes": exc.actual_bytes,
         },
+    )
+
+
+async def document_not_found_handler(
+    request: Request,
+    _exc: DocumentNotFoundError,
+):
+    """Return 404 when a document is missing or not in the workspace."""
+    return error_response(
+        request=request,
+        status_code=status.HTTP_404_NOT_FOUND,
+        code="not_found",
+        message="Document not found",
     )

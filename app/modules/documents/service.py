@@ -1,21 +1,27 @@
 """Document domain service."""
 
 from pathlib import Path
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from app.infrastructure.config import Settings
 from app.infrastructure.db.enums import DocumentStatus
 from app.infrastructure.storage.interface import StorageBackend
 from app.modules.documents.exceptions import (
+    DocumentNotFoundError,
     FileTooLargeError,
     UnsupportedFileTypeError,
 )
 from app.modules.documents.repository import DocumentRepository
+from app.modules.documents.sanitization import sanitize_ingestion_error_message
 from app.modules.documents.schemas import (
+    DocumentDetailResponse,
     DocumentListResponse,
     DocumentResponse,
     DocumentUploadResponse,
 )
+from app.modules.ingestion.job_repository import IngestionJobRepository
+from app.modules.ingestion.repository import IngestionRepository
+from app.modules.ingestion.schemas import IngestionJobResponse
 from app.modules.ingestion.service import IngestionService
 from app.modules.workspaces.context import WorkspaceContext
 
@@ -32,11 +38,15 @@ class DocumentService:
         storage_backend: StorageBackend,
         settings: Settings,
         ingestion_service: IngestionService,
+        ingestion_job_repository: IngestionJobRepository,
+        ingestion_repository: IngestionRepository,
     ) -> None:
         self._document_repository = document_repository
         self._storage_backend = storage_backend
         self._max_upload_bytes = settings.MAX_UPLOAD_BYTES
         self._ingestion_service = ingestion_service
+        self._ingestion_job_repository = ingestion_job_repository
+        self._ingestion_repository = ingestion_repository
 
     def upload(
         self,
@@ -99,6 +109,52 @@ class DocumentService:
             total=total,
             page=page,
             page_size=page_size,
+        )
+
+    def get_document_detail(
+        self,
+        *,
+        context: WorkspaceContext,
+        document_id: UUID,
+    ) -> DocumentDetailResponse:
+        """Return document metadata with latest ingestion job and chunk count."""
+        document = self._document_repository.get_by_id(
+            workspace_id=context.workspace_id,
+            id=document_id,
+        )
+        if document is None:
+            raise DocumentNotFoundError()
+
+        latest_job = self._ingestion_job_repository.get_latest_for_document(
+            workspace_id=context.workspace_id,
+            document_id=document_id,
+        )
+
+        chunk_count = None
+        if document.status == DocumentStatus.INDEXED:
+            chunk_count = self._ingestion_repository.count_chunks_for_document(
+                workspace_id=context.workspace_id,
+                document_id=document_id,
+            )
+
+        error_message = None
+        latest_job_response = None
+        if latest_job is not None:
+            latest_job_response = IngestionJobResponse.model_validate(latest_job)
+            sanitized_error = sanitize_ingestion_error_message(
+                latest_job_response.error_message
+            )
+            latest_job_response = latest_job_response.model_copy(
+                update={"error_message": sanitized_error},
+            )
+            if document.status == DocumentStatus.FAILED:
+                error_message = sanitized_error
+
+        return DocumentDetailResponse(
+            document=DocumentResponse.model_validate(document),
+            latest_job=latest_job_response,
+            chunk_count=chunk_count,
+            error_message=error_message,
         )
 
     def _validate_extension(self, filename: str) -> str:

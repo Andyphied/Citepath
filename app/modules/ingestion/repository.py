@@ -3,7 +3,7 @@
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.infrastructure.db.scoped_repository import WorkspaceScopedRepository
@@ -101,6 +101,23 @@ class IngestionRepository(WorkspaceScopedRepository[DocumentChunk]):
         )
         stmt = self._scoped_filter(stmt, workspace_id)
         return list(self._session.scalars(stmt).all())
+
+    def count_chunks_for_document(
+        self,
+        *,
+        workspace_id: UUID,
+        document_id: UUID,
+    ) -> int:
+        """Return the number of stored chunks for a document in the workspace."""
+        count = self._session.scalar(
+            select(func.count())
+            .select_from(DocumentChunk)
+            .where(
+                DocumentChunk.workspace_id == workspace_id,
+                DocumentChunk.document_id == document_id,
+            )
+        )
+        return int(count or 0)
 
     def search_similar(
         self,
