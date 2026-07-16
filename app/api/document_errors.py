@@ -5,9 +5,12 @@ from fastapi import Request, status
 from app.modules.documents.exceptions import (
     DocumentNotFoundError,
     DocumentReindexInProgressError,
+    EmptyFileError,
     FileTooLargeError,
+    InvalidFileContentError,
     UnsupportedFileTypeError,
 )
+from app.modules.documents.service import ALLOWED_EXTENSIONS
 from app.modules.observability.errors import error_response
 
 
@@ -16,7 +19,9 @@ async def unsupported_file_type_handler(
     exc: UnsupportedFileTypeError,
 ):
     """Return 422 when the uploaded file type is not supported."""
-    details = {}
+    details: dict[str, object] = {
+        "allowed_types": sorted(ALLOWED_EXTENSIONS),
+    }
     if exc.extension is not None:
         details["extension"] = exc.extension
     return error_response(
@@ -25,6 +30,36 @@ async def unsupported_file_type_handler(
         code="unsupported_file_type",
         message="Unsupported file type",
         details=details,
+    )
+
+
+async def empty_file_handler(
+    request: Request,
+    _exc: EmptyFileError,
+):
+    """Return 422 when the uploaded file is empty."""
+    return error_response(
+        request=request,
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        code="empty_file",
+        message="Uploaded file is empty",
+    )
+
+
+async def invalid_file_content_handler(
+    request: Request,
+    exc: InvalidFileContentError,
+):
+    """Return 422 when file content does not match the declared type."""
+    return error_response(
+        request=request,
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        code="invalid_file_content",
+        message="File content does not match the declared file type",
+        details={
+            "file_type": exc.file_type,
+            "reason": exc.reason,
+        },
     )
 
 

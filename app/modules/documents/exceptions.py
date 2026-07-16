@@ -9,6 +9,19 @@ class UnsupportedFileTypeError(Exception):
         super().__init__()
 
 
+class EmptyFileError(Exception):
+    """Raised when an uploaded file has no content."""
+
+
+class InvalidFileContentError(Exception):
+    """Raised when file content does not match the declared file type."""
+
+    def __init__(self, *, file_type: str, reason: str) -> None:
+        self.file_type = file_type
+        self.reason = reason
+        super().__init__()
+
+
 class FileTooLargeError(Exception):
     """Raised when an uploaded file exceeds the configured size limit."""
 

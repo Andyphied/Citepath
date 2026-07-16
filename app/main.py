@@ -16,7 +16,9 @@ from app.api.auth_errors import (
 from app.api.document_errors import (
     document_not_found_handler,
     document_reindex_in_progress_handler,
+    empty_file_handler,
     file_too_large_handler,
+    invalid_file_content_handler,
     unsupported_file_type_handler,
 )
 from app.api.ingestion_errors import ingestion_job_not_found_handler
@@ -42,7 +44,9 @@ from app.modules.auth.exceptions import (
 from app.modules.documents.exceptions import (
     DocumentNotFoundError,
     DocumentReindexInProgressError,
+    EmptyFileError,
     FileTooLargeError,
+    InvalidFileContentError,
     UnsupportedFileTypeError,
 )
 from app.modules.ingestion.exceptions import IngestionJobNotFoundError
@@ -102,6 +106,8 @@ def create_app() -> FastAPI:
     app.add_exception_handler(MemberNotFoundError, member_not_found_handler)
     app.add_exception_handler(LastOwnerError, last_owner_handler)
     app.add_exception_handler(UnsupportedFileTypeError, unsupported_file_type_handler)
+    app.add_exception_handler(EmptyFileError, empty_file_handler)
+    app.add_exception_handler(InvalidFileContentError, invalid_file_content_handler)
     app.add_exception_handler(FileTooLargeError, file_too_large_handler)
     app.add_exception_handler(DocumentNotFoundError, document_not_found_handler)
     app.add_exception_handler(

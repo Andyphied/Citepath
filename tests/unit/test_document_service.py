@@ -11,7 +11,9 @@ from app.infrastructure.db.enums import DocumentStatus, IngestionJobStatus, Work
 from app.modules.documents.exceptions import (
     DocumentNotFoundError,
     DocumentReindexInProgressError,
+    EmptyFileError,
     FileTooLargeError,
+    InvalidFileContentError,
     UnsupportedFileTypeError,
 )
 from app.modules.documents.schemas import DocumentDetailResponse, DocumentListResponse
@@ -153,6 +155,111 @@ def test_upload_rejects_unsupported_extension(
         )
 
     assert exc_info.value.extension == "exe"
+
+
+def test_upload_rejects_empty_file(
+    settings: Settings,
+    workspace_context: WorkspaceContext,
+) -> None:
+    service = _build_service(MagicMock(), settings)
+
+    with pytest.raises(EmptyFileError):
+        service.upload(
+            context=workspace_context,
+            file_content=b"",
+            filename="empty.md",
+        )
+
+
+def test_upload_rejects_docx_extension(
+    settings: Settings,
+    workspace_context: WorkspaceContext,
+) -> None:
+    service = _build_service(MagicMock(), settings)
+
+    with pytest.raises(UnsupportedFileTypeError) as exc_info:
+        service.upload(
+            context=workspace_context,
+            file_content=b"PK\x03\x04",
+            filename="report.docx",
+        )
+
+    assert exc_info.value.extension == "docx"
+
+
+def test_upload_rejects_fake_pdf_without_magic_bytes(
+    settings: Settings,
+    workspace_context: WorkspaceContext,
+) -> None:
+    service = _build_service(MagicMock(), settings)
+
+    with pytest.raises(InvalidFileContentError) as exc_info:
+        service.upload(
+            context=workspace_context,
+            file_content=b"not a pdf",
+            filename="fake.pdf",
+        )
+
+    assert exc_info.value.file_type == "pdf"
+    assert exc_info.value.reason == "invalid_pdf_signature"
+
+
+def test_upload_accepts_valid_pdf_magic_bytes(
+    settings: Settings,
+    workspace_context: WorkspaceContext,
+) -> None:
+    repository = MagicMock()
+    storage = MagicMock()
+    ingestion_service = MagicMock()
+    storage.save.return_value = "key"
+
+    created = MagicMock()
+    created.id = uuid4()
+    created.workspace_id = workspace_context.workspace_id
+    created.uploaded_by = workspace_context.user_id
+    created.title = "report.pdf"
+    created.source_type = "general"
+    created.file_type = "pdf"
+    created.status = DocumentStatus.UPLOADED
+    created.created_at = "2026-07-06T00:00:00Z"
+    created.updated_at = "2026-07-06T00:00:00Z"
+    repository.create.return_value = created
+    ingestion_service.create_job_for_document.return_value = _ingestion_job_response(
+        workspace_id=workspace_context.workspace_id,
+        document_id=created.id,
+    )
+
+    service = _build_service(
+        repository,
+        settings,
+        storage=storage,
+        ingestion_service=ingestion_service,
+    )
+    result = service.upload(
+        context=workspace_context,
+        file_content=b"%PDF-1.4 minimal",
+        filename="report.pdf",
+    )
+
+    storage.save.assert_called_once()
+    assert result.document.file_type == "pdf"
+
+
+def test_upload_rejects_invalid_utf8_text_file(
+    settings: Settings,
+    workspace_context: WorkspaceContext,
+) -> None:
+    service = _build_service(MagicMock(), settings)
+
+    with pytest.raises(InvalidFileContentError) as exc_info:
+        service.upload(
+            context=workspace_context,
+            file_content=b"\xff\xfe",
+            filename="notes.txt",
+        )
+
+    assert exc_info.value.file_type == "txt"
+    assert exc_info.value.reason == "invalid_text_encoding"
 
 
 def test_upload_rejects_file_over_max_size(

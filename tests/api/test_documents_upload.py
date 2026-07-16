@@ -260,3 +260,102 @@ def test_unsupported_exe_upload_returns_422(document_upload_context) -> None:
     assert response.status_code == 422
     body = response.json()
     assert body["error"]["code"] == "unsupported_file_type"
+    assert body["error"]["details"]["extension"] == "exe"
+    assert body["error"]["details"]["allowed_types"] == ["json", "md", "pdf", "txt"]
+
+
+def test_unsupported_docx_upload_returns_422(document_upload_context) -> None:
+    client, db_session, storage_path = document_upload_context
+    _owner, owner_token = _register_user(
+        client,
+        email="doc-docx-owner@example.com",
+        name="Owner",
+    )
+    workspace = _create_workspace(
+        client,
+        owner_token,
+        name="Docx Workspace",
+        slug="doc-docx-workspace",
+    )
+
+    response = client.post(
+        f"/workspaces/{workspace['id']}/documents",
+        headers={"Authorization": f"Bearer {owner_token}"},
+        files={
+            "file": (
+                "report.docx",
+                io.BytesIO(b"PK\x03\x04"),
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
+        },
+    )
+
+    assert response.status_code == 422
+    body = response.json()
+    assert body["error"]["code"] == "unsupported_file_type"
+    assert body["error"]["details"]["extension"] == "docx"
+    assert body["error"]["details"]["allowed_types"] == ["json", "md", "pdf", "txt"]
+
+    doc_count = db_session.execute(text("SELECT COUNT(*) FROM documents")).scalar()
+    assert doc_count == 0
+    assert list(storage_path.rglob("*")) == []
+
+
+def test_empty_file_upload_returns_422(document_upload_context) -> None:
+    client, db_session, storage_path = document_upload_context
+    _owner, owner_token = _register_user(
+        client,
+        email="doc-empty-owner@example.com",
+        name="Owner",
+    )
+    workspace = _create_workspace(
+        client,
+        owner_token,
+        name="Empty Workspace",
+        slug="doc-empty-workspace",
+    )
+
+    response = client.post(
+        f"/workspaces/{workspace['id']}/documents",
+        headers={"Authorization": f"Bearer {owner_token}"},
+        files={"file": ("empty.md", io.BytesIO(b""), "text/markdown")},
+    )
+
+    assert response.status_code == 422
+    body = response.json()
+    assert body["error"]["code"] == "empty_file"
+
+    doc_count = db_session.execute(text("SELECT COUNT(*) FROM documents")).scalar()
+    assert doc_count == 0
+    assert list(storage_path.rglob("*")) == []
+
+
+def test_fake_pdf_upload_returns_422(document_upload_context) -> None:
+    client, db_session, storage_path = document_upload_context
+    _owner, owner_token = _register_user(
+        client,
+        email="doc-fake-pdf-owner@example.com",
+        name="Owner",
+    )
+    workspace = _create_workspace(
+        client,
+        owner_token,
+        name="Fake PDF Workspace",
+        slug="doc-fake-pdf-workspace",
+    )
+
+    response = client.post(
+        f"/workspaces/{workspace['id']}/documents",
+        headers={"Authorization": f"Bearer {owner_token}"},
+        files={"file": ("fake.pdf", io.BytesIO(b"not a pdf"), "application/pdf")},
+    )
+
+    assert response.status_code == 422
+    body = response.json()
+    assert body["error"]["code"] == "invalid_file_content"
+    assert body["error"]["details"]["file_type"] == "pdf"
+    assert body["error"]["details"]["reason"] == "invalid_pdf_signature"
+
+    doc_count = db_session.execute(text("SELECT COUNT(*) FROM documents")).scalar()
+    assert doc_count == 0
+    assert list(storage_path.rglob("*")) == []

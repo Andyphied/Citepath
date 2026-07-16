@@ -10,7 +10,9 @@ from app.modules.audit.repository import AuditRepository
 from app.modules.documents.exceptions import (
     DocumentNotFoundError,
     DocumentReindexInProgressError,
+    EmptyFileError,
     FileTooLargeError,
+    InvalidFileContentError,
     UnsupportedFileTypeError,
 )
 from app.modules.documents.repository import DocumentRepository
@@ -29,6 +31,7 @@ from app.modules.ingestion.service import IngestionService
 from app.modules.workspaces.context import WorkspaceContext
 
 ALLOWED_EXTENSIONS = frozenset({"md", "txt", "pdf", "json"})
+PDF_MAGIC_BYTES = b"%PDF"
 DEFAULT_SOURCE_TYPE = "general"
 DOCUMENT_DELETED_EVENT = "document.deleted"
 DOCUMENT_REINDEX_REQUESTED_EVENT = "document.reindex_requested"
@@ -67,6 +70,8 @@ class DocumentService:
         """Validate, store, persist a document, and enqueue ingestion."""
         file_type = self._validate_extension(filename)
         self._validate_size(len(file_content))
+        self._validate_not_empty(file_content)
+        self._validate_content(file_content, file_type)
 
         document_id = uuid4()
         storage_key = self._storage_backend.save(
@@ -268,3 +273,25 @@ class DocumentService:
                 max_bytes=self._max_upload_bytes,
                 actual_bytes=size,
             )
+
+    def _validate_not_empty(self, file_content: bytes) -> None:
+        if len(file_content) == 0:
+            raise EmptyFileError()
+
+    def _validate_content(self, file_content: bytes, file_type: str) -> None:
+        if file_type == "pdf":
+            if not file_content.startswith(PDF_MAGIC_BYTES):
+                raise InvalidFileContentError(
+                    file_type=file_type,
+                    reason="invalid_pdf_signature",
+                )
+            return
+
+        if file_type in {"md", "txt", "json"}:
+            try:
+                file_content.decode("utf-8")
+            except UnicodeDecodeError as exc:
+                raise InvalidFileContentError(
+                    file_type=file_type,
+                    reason="invalid_text_encoding",
+                ) from exc
