@@ -14,6 +14,7 @@ from app.infrastructure.db.enums import DocumentStatus
 from app.modules.documents.schemas import (
     DocumentDetailResponse,
     DocumentListResponse,
+    DocumentReindexResponse,
     DocumentUploadResponse,
 )
 
@@ -67,6 +68,23 @@ async def delete_document(
 ) -> None:
     """Delete a document and its stored content, chunks, and ingestion jobs."""
     document_service.delete(
+        context=workspace_context,
+        document_id=document_id,
+    )
+
+
+@router.post(
+    "/{workspace_id}/documents/{document_id}/reindex",
+    response_model=DocumentReindexResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def reindex_document(
+    document_id: UUID,
+    workspace_context: RequireDocumentMutateDep,
+    document_service: DocumentServiceDep,
+) -> DocumentReindexResponse:
+    """Re-index a document by deleting chunks and enqueueing ingestion."""
+    return document_service.reindex(
         context=workspace_context,
         document_id=document_id,
     )

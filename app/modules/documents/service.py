@@ -4,11 +4,12 @@ from pathlib import Path
 from uuid import UUID, uuid4
 
 from app.infrastructure.config import Settings
-from app.infrastructure.db.enums import DocumentStatus
+from app.infrastructure.db.enums import DocumentStatus, IngestionJobStatus
 from app.infrastructure.storage.interface import StorageBackend
 from app.modules.audit.repository import AuditRepository
 from app.modules.documents.exceptions import (
     DocumentNotFoundError,
+    DocumentReindexInProgressError,
     FileTooLargeError,
     UnsupportedFileTypeError,
 )
@@ -17,6 +18,7 @@ from app.modules.documents.sanitization import sanitize_ingestion_error_message
 from app.modules.documents.schemas import (
     DocumentDetailResponse,
     DocumentListResponse,
+    DocumentReindexResponse,
     DocumentResponse,
     DocumentUploadResponse,
 )
@@ -29,6 +31,7 @@ from app.modules.workspaces.context import WorkspaceContext
 ALLOWED_EXTENSIONS = frozenset({"md", "txt", "pdf", "json"})
 DEFAULT_SOURCE_TYPE = "general"
 DOCUMENT_DELETED_EVENT = "document.deleted"
+DOCUMENT_REINDEX_REQUESTED_EVENT = "document.reindex_requested"
 
 
 class DocumentService:
@@ -200,6 +203,58 @@ class DocumentService:
 
         if storage_key:
             self._storage_backend.delete(storage_key)
+
+    def reindex(
+        self,
+        *,
+        context: WorkspaceContext,
+        document_id: UUID,
+        ip_address: str | None = None,
+    ) -> DocumentReindexResponse:
+        """Delete existing chunks, reset status, enqueue ingestion, and audit."""
+        document = self._document_repository.get_by_id(
+            workspace_id=context.workspace_id,
+            id=document_id,
+        )
+        if document is None:
+            raise DocumentNotFoundError()
+
+        latest_job = self._ingestion_job_repository.get_latest_for_document(
+            workspace_id=context.workspace_id,
+            document_id=document_id,
+        )
+        if latest_job is not None and latest_job.status in (
+            IngestionJobStatus.PENDING,
+            IngestionJobStatus.PROCESSING,
+        ):
+            raise DocumentReindexInProgressError()
+
+        self._ingestion_repository.delete_chunks_for_document(
+            workspace_id=context.workspace_id,
+            document_id=document_id,
+        )
+        updated_document = self._document_repository.update_status(
+            document=document,
+            status=DocumentStatus.PROCESSING,
+        )
+        self._audit_repository.create(
+            workspace_id=context.workspace_id,
+            actor_user_id=context.user_id,
+            event_type=DOCUMENT_REINDEX_REQUESTED_EVENT,
+            metadata={
+                "document_id": str(document_id),
+                "title": document.title,
+            },
+            ip_address=ip_address,
+        )
+        ingestion_job = self._ingestion_service.create_job_for_document(
+            workspace_id=context.workspace_id,
+            document_id=document_id,
+        )
+        return DocumentReindexResponse(
+            document=DocumentResponse.model_validate(updated_document),
+            ingestion_job=ingestion_job,
+        )
 
     def _validate_extension(self, filename: str) -> str:
         suffix = Path(filename).suffix.lower().lstrip(".")

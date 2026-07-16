@@ -4,6 +4,7 @@ from fastapi import Request, status
 
 from app.modules.documents.exceptions import (
     DocumentNotFoundError,
+    DocumentReindexInProgressError,
     FileTooLargeError,
     UnsupportedFileTypeError,
 )
@@ -54,4 +55,17 @@ async def document_not_found_handler(
         status_code=status.HTTP_404_NOT_FOUND,
         code="not_found",
         message="Document not found",
+    )
+
+
+async def document_reindex_in_progress_handler(
+    request: Request,
+    _exc: DocumentReindexInProgressError,
+):
+    """Return 409 when a document re-index is already in progress."""
+    return error_response(
+        request=request,
+        status_code=status.HTTP_409_CONFLICT,
+        code="reindex_in_progress",
+        message="Document re-index is already in progress",
     )

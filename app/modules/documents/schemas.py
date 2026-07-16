@@ -31,6 +31,13 @@ class DocumentUploadResponse(BaseModel):
     ingestion_job: IngestionJobResponse
 
 
+class DocumentReindexResponse(BaseModel):
+    """Re-index response including updated document metadata and new ingestion job."""
+
+    document: DocumentResponse
+    ingestion_job: IngestionJobResponse
+
+
 class DocumentListResponse(BaseModel):
     """Paginated workspace document list."""
 

@@ -20,3 +20,7 @@ class FileTooLargeError(Exception):
 
 class DocumentNotFoundError(Exception):
     """Raised when a document is missing or not in the requested workspace."""
+
+
+class DocumentReindexInProgressError(Exception):
+    """Raised when a document already has a pending or processing ingestion job."""

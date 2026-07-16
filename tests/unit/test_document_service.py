@@ -7,9 +7,10 @@ from uuid import uuid4
 import pytest
 
 from app.infrastructure.config import Settings
-from app.infrastructure.db.enums import DocumentStatus, WorkspaceRole
+from app.infrastructure.db.enums import DocumentStatus, IngestionJobStatus, WorkspaceRole
 from app.modules.documents.exceptions import (
     DocumentNotFoundError,
+    DocumentReindexInProgressError,
     FileTooLargeError,
     UnsupportedFileTypeError,
 )
@@ -498,3 +499,142 @@ def test_delete_raises_when_document_missing(
         )
 
     repository.delete.assert_not_called()
+
+
+def test_reindex_deletes_chunks_resets_status_enqueues_job_and_audits(
+    settings: Settings,
+    workspace_context: WorkspaceContext,
+) -> None:
+    document_id = uuid4()
+    document = MagicMock()
+    document.id = document_id
+    document.title = "indexed-runbook.md"
+    document.workspace_id = workspace_context.workspace_id
+    document.uploaded_by = workspace_context.user_id
+    document.source_type = "general"
+    document.file_type = "md"
+    document.status = DocumentStatus.INDEXED
+    document.created_at = datetime.fromisoformat("2026-07-07T00:00:00+00:00")
+    document.updated_at = datetime.fromisoformat("2026-07-07T00:00:00+00:00")
+
+    completed_job = MagicMock()
+    completed_job.status = IngestionJobStatus.COMPLETED
+
+    updated_document = MagicMock()
+    updated_document.id = document_id
+    updated_document.workspace_id = workspace_context.workspace_id
+    updated_document.uploaded_by = workspace_context.user_id
+    updated_document.title = "indexed-runbook.md"
+    updated_document.source_type = "general"
+    updated_document.file_type = "md"
+    updated_document.status = DocumentStatus.PROCESSING
+    updated_document.created_at = document.created_at
+    updated_document.updated_at = document.updated_at
+
+    repository = MagicMock()
+    repository.get_by_id.return_value = document
+    repository.update_status.return_value = updated_document
+
+    job_repository = MagicMock()
+    job_repository.get_latest_for_document.return_value = completed_job
+
+    ingestion_repository = MagicMock()
+    ingestion_service = MagicMock()
+    audit_repository = MagicMock()
+    job_response = _ingestion_job_response(
+        workspace_id=workspace_context.workspace_id,
+        document_id=document_id,
+    )
+    ingestion_service.create_job_for_document.return_value = job_response
+
+    service = _build_service(
+        repository,
+        settings,
+        ingestion_service=ingestion_service,
+        job_repository=job_repository,
+        ingestion_repository=ingestion_repository,
+        audit_repository=audit_repository,
+    )
+    result = service.reindex(
+        context=workspace_context,
+        document_id=document_id,
+        ip_address="127.0.0.1",
+    )
+
+    ingestion_repository.delete_chunks_for_document.assert_called_once_with(
+        workspace_id=workspace_context.workspace_id,
+        document_id=document_id,
+    )
+    repository.update_status.assert_called_once_with(
+        document=document,
+        status=DocumentStatus.PROCESSING,
+    )
+    audit_repository.create.assert_called_once_with(
+        workspace_id=workspace_context.workspace_id,
+        actor_user_id=workspace_context.user_id,
+        event_type="document.reindex_requested",
+        metadata={
+            "document_id": str(document_id),
+            "title": "indexed-runbook.md",
+        },
+        ip_address="127.0.0.1",
+    )
+    ingestion_service.create_job_for_document.assert_called_once_with(
+        workspace_id=workspace_context.workspace_id,
+        document_id=document_id,
+    )
+    assert result.document.status == "processing"
+    assert result.ingestion_job.status == "pending"
+
+
+@pytest.mark.parametrize(
+    "job_status",
+    [IngestionJobStatus.PENDING, IngestionJobStatus.PROCESSING],
+)
+def test_reindex_raises_when_job_already_in_progress(
+    settings: Settings,
+    workspace_context: WorkspaceContext,
+    job_status: IngestionJobStatus,
+) -> None:
+    document_id = uuid4()
+    document = MagicMock()
+    document.id = document_id
+
+    latest_job = MagicMock()
+    latest_job.status = job_status
+
+    repository = MagicMock()
+    repository.get_by_id.return_value = document
+    job_repository = MagicMock()
+    job_repository.get_latest_for_document.return_value = latest_job
+    ingestion_repository = MagicMock()
+
+    service = _build_service(
+        repository,
+        settings,
+        job_repository=job_repository,
+        ingestion_repository=ingestion_repository,
+    )
+
+    with pytest.raises(DocumentReindexInProgressError):
+        service.reindex(
+            context=workspace_context,
+            document_id=document_id,
+        )
+
+    ingestion_repository.delete_chunks_for_document.assert_not_called()
+
+
+def test_reindex_raises_when_document_missing(
+    settings: Settings,
+    workspace_context: WorkspaceContext,
+) -> None:
+    repository = MagicMock()
+    repository.get_by_id.return_value = None
+    service = _build_service(repository, settings)
+
+    with pytest.raises(DocumentNotFoundError):
+        service.reindex(
+            context=workspace_context,
+            document_id=uuid4(),
+        )
