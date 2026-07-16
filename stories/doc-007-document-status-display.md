@@ -2,7 +2,9 @@
 
 > **Epic:** Epic 3: Document Upload and Management  
 > **Story ID:** DOC-007
-> **Status:** in_progress
+> **Status:** completed
+> **Completed:** 2026-07-16
+> **Implementation note:** [DOC-007](../docs/implementation-notes/DOC-007.md)
 
 **User Story**
 
