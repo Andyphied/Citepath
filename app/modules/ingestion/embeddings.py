@@ -41,7 +41,7 @@ def _log_embedding_usage(
             user_id=None,
             provider=provider_name,
             model=model,
-            operation=UsageOperation.EMBEDDING,
+            operation=UsageOperation.EMBEDDING_DOCUMENT,
             embedding_tokens=embedding_tokens,
             latency_ms=latency_ms,
             status=status,

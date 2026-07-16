@@ -4,6 +4,7 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.infrastructure.db.enums import UsageEventStatus, UsageOperation
@@ -50,3 +51,24 @@ class UsageRepository:
         self._session.add(usage_event)
         self._session.flush()
         return usage_event
+
+    def sum_embedding_tokens_for_job(
+        self,
+        *,
+        workspace_id: UUID,
+        job_id: UUID,
+    ) -> int:
+        """Sum embedding tokens for document-ingestion batches linked to a job."""
+        total = self._session.scalar(
+            select(func.coalesce(func.sum(UsageEvent.embedding_tokens), 0)).where(
+                UsageEvent.workspace_id == workspace_id,
+                UsageEvent.operation.in_(
+                    [
+                        UsageOperation.EMBEDDING_DOCUMENT,
+                        UsageOperation.EMBEDDING,
+                    ]
+                ),
+                UsageEvent.metadata_["job_id"].astext == str(job_id),
+            )
+        )
+        return int(total or 0)

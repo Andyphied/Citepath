@@ -73,3 +73,15 @@ class UsageService:
                 provider=event.provider,
                 model=event.model,
             )
+
+    def sum_embedding_tokens_for_job(
+        self,
+        *,
+        workspace_id: UUID,
+        job_id: UUID,
+    ) -> int:
+        """Return aggregate embedding tokens logged for an ingestion job."""
+        return self._repository.sum_embedding_tokens_for_job(
+            workspace_id=workspace_id,
+            job_id=job_id,
+        )

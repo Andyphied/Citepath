@@ -77,7 +77,9 @@ class AgentToolCallStatus(str, enum.Enum):
 
 class UsageOperation(str, enum.Enum):
     CHAT_COMPLETION = "chat_completion"
-    EMBEDDING = "embedding"
+    EMBEDDING = "embedding"  # legacy; prefer EMBEDDING_DOCUMENT / EMBEDDING_QUERY
+    EMBEDDING_DOCUMENT = "embedding_document"
+    EMBEDDING_QUERY = "embedding_query"
     AGENT_STEP = "agent_step"
 
 

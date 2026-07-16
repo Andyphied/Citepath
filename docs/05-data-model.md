@@ -366,7 +366,7 @@ erDiagram
 | `user_id` | UUID FK | Nullable for system/worker events |
 | `provider` | VARCHAR(64) | `openai`, `anthropic` |
 | `model` | VARCHAR(128) | |
-| `operation` | ENUM | `chat_completion`, `embedding`, `agent_step` |
+| `operation` | ENUM | `chat_completion`, `embedding` (legacy), `embedding_document`, `embedding_query`, `agent_step` |
 | `prompt_tokens` | INT DEFAULT 0 | |
 | `completion_tokens` | INT DEFAULT 0 | |
 | `embedding_tokens` | INT DEFAULT 0 | |

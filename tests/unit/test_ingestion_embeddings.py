@@ -96,7 +96,7 @@ def test_embed_content_chunks_returns_embedded_chunks(
     success_event = usage_service.log_event.call_args.args[0]
     assert success_event.workspace_id == workspace_id
     assert success_event.embedding_tokens == 20
-    assert success_event.operation == UsageOperation.EMBEDDING
+    assert success_event.operation == UsageOperation.EMBEDDING_DOCUMENT
     assert success_event.metadata["document_id"] == str(document_id)
     assert success_event.metadata["job_id"] == str(job_id)
 
@@ -209,7 +209,7 @@ def test_embed_content_chunks_fails_after_retry_exhausted(
 
     failure_event = usage_service.log_event.call_args.args[0]
     assert failure_event.status == UsageEventStatus.FAILED
-    assert failure_event.operation == UsageOperation.EMBEDDING
+    assert failure_event.operation == UsageOperation.EMBEDDING_DOCUMENT
     assert failure_event.user_id is None
     assert failure_event.metadata["document_id"] == str(document_id)
     assert failure_event.metadata["job_id"] == str(job_id)
