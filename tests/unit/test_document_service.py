@@ -136,6 +136,7 @@ def test_upload_persists_document_and_creates_ingestion_job(
         document_id=created.id,
     )
     assert result.document.status == "uploaded"
+    assert result.document.status_label == "Uploaded"
     assert result.document.file_type == "md"
     assert result.ingestion_job.status == "pending"
     assert result.ingestion_job.document_id == created.id

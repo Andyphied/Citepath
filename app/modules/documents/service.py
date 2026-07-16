@@ -97,7 +97,7 @@ class DocumentService:
             document_id=document.id,
         )
         return DocumentUploadResponse(
-            document=DocumentResponse.model_validate(document),
+            document=DocumentResponse.from_document(document),
             ingestion_job=ingestion_job,
         )
 
@@ -117,7 +117,7 @@ class DocumentService:
             status=status,
         )
         return DocumentListResponse(
-            items=[DocumentResponse.model_validate(document) for document in documents],
+            items=[DocumentResponse.from_document(document) for document in documents],
             total=total,
             page=page,
             page_size=page_size,
@@ -163,7 +163,7 @@ class DocumentService:
                 error_message = sanitized_error
 
         return DocumentDetailResponse(
-            document=DocumentResponse.model_validate(document),
+            document=DocumentResponse.from_document(document),
             latest_job=latest_job_response,
             chunk_count=chunk_count,
             error_message=error_message,
@@ -257,7 +257,7 @@ class DocumentService:
             document_id=document_id,
         )
         return DocumentReindexResponse(
-            document=DocumentResponse.model_validate(updated_document),
+            document=DocumentResponse.from_document(updated_document),
             ingestion_job=ingestion_job,
         )
 

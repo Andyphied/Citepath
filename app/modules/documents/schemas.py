@@ -1,11 +1,16 @@
 """Document API schemas."""
 
 from datetime import datetime
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
+from app.infrastructure.db.enums import DocumentStatus
 from app.modules.ingestion.schemas import IngestionJobResponse
+
+if TYPE_CHECKING:
+    from app.modules.documents.models import Document
 
 
 class DocumentResponse(BaseModel):
@@ -19,9 +24,31 @@ class DocumentResponse(BaseModel):
     source_type: str | None
     file_type: str
     status: str
+    status_label: str
     uploaded_by: UUID
     created_at: datetime
     updated_at: datetime
+
+    @classmethod
+    def from_document(cls, document: "Document") -> "DocumentResponse":
+        """Build a response with machine status and human-readable label."""
+        status = (
+            document.status
+            if isinstance(document.status, DocumentStatus)
+            else DocumentStatus(document.status)
+        )
+        return cls(
+            id=document.id,
+            workspace_id=document.workspace_id,
+            title=document.title,
+            source_type=document.source_type,
+            file_type=document.file_type,
+            status=status.value,
+            status_label=status.label,
+            uploaded_by=document.uploaded_by,
+            created_at=document.created_at,
+            updated_at=document.updated_at,
+        )
 
 
 class DocumentUploadResponse(BaseModel):

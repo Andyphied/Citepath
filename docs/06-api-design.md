@@ -147,7 +147,7 @@ Every `{workspace_id}` route validates membership before handler execution. Reso
 | **Purpose** | Upload document and start ingestion |
 | **Role** | Owner, Admin, Member |
 | **Request** | `multipart/form-data`: `file`, optional `title`, `source_type` |
-| **Response 202** | `{ "document": { "id", "title", "status": "uploaded", ... }, "ingestion_job": { "id", "status": "pending" } }` |
+| **Response 202** | `{ "document": { "id", "title", "status": "uploaded", "status_label": "Uploaded", ... }, "ingestion_job": { "id", "status": "pending" } }` |
 | **Errors** | `403` viewer, `422` invalid file type/size |
 | **Audit** | `document_upload` |
 | **Idempotency** | Optional header `Idempotency-Key` — same key within 24h returns same document if upload in progress |
@@ -159,7 +159,7 @@ Every `{workspace_id}` route validates membership before handler execution. Reso
 | **Purpose** | List documents |
 | **Role** | All members |
 | **Query** | `status`, `source_type`, pagination |
-| **Response 200** | Paginated document list with status |
+| **Response 200** | Paginated document list with `status` and `status_label` per item |
 
 ### `GET /workspaces/{workspace_id}/documents/{document_id}`
 
@@ -167,7 +167,7 @@ Every `{workspace_id}` route validates membership before handler execution. Reso
 |--|--|
 | **Purpose** | Document detail + latest ingestion job |
 | **Role** | All members |
-| **Response 200** | Document + `latest_job`, chunk count if indexed |
+| **Response 200** | Document (`status`, `status_label`) + `latest_job`, chunk count if indexed |
 | **Errors** | `404` wrong workspace |
 
 ### `DELETE /workspaces/{workspace_id}/documents/{document_id}`

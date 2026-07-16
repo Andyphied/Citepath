@@ -13,10 +13,37 @@ class WorkspaceRole(str, enum.Enum):
 
 
 class DocumentStatus(str, enum.Enum):
+    """Document ingestion lifecycle status.
+
+    State machine (worker-driven transitions):
+
+        uploaded --(worker picks up job)--> processing
+        processing --(ingestion succeeds)--> indexed
+        processing --(ingestion fails)-----> failed
+        indexed --(re-index requested)------> processing
+        failed --(re-index requested)-------> processing
+
+    API clients receive ``status`` (machine value) and ``status_label``
+    (human-readable).
+    """
+
     UPLOADED = "uploaded"
     PROCESSING = "processing"
     INDEXED = "indexed"
     FAILED = "failed"
+
+    @property
+    def label(self) -> str:
+        """Human-readable label for UI and API responses."""
+        return _DOCUMENT_STATUS_LABELS[self]
+
+
+_DOCUMENT_STATUS_LABELS: dict[DocumentStatus, str] = {
+    DocumentStatus.UPLOADED: "Uploaded",
+    DocumentStatus.PROCESSING: "Processing",
+    DocumentStatus.INDEXED: "Indexed",
+    DocumentStatus.FAILED: "Failed",
+}
 
 
 class IngestionJobStatus(str, enum.Enum):
