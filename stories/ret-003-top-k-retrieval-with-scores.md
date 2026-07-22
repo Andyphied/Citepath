@@ -2,7 +2,9 @@
 
 > **Epic:** Epic 5: Vector Search and Retrieval  
 > **Story ID:** RET-003
-> **Status:** in_progress
+> **Status:** completed
+> **Completed:** 2026-07-22
+> **Implementation note:** [RET-003](../docs/implementation-notes/RET-003.md)
 
 **User Story**
 
