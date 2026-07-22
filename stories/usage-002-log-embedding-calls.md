@@ -2,7 +2,9 @@
 
 > **Epic:** Epic 8: Usage Tracking and Cost Visibility  
 > **Story ID:** USAGE-002
-> **Status:** in_progress
+> **Status:** completed
+> **Completed:** 2026-07-16
+> **Implementation note:** [USAGE-002](../docs/implementation-notes/USAGE-002.md)
 
 **User Story**
 
