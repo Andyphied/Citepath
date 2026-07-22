@@ -1,5 +1,6 @@
 """Ingestion persistence with workspace scoping."""
 
+from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
 
@@ -9,6 +10,14 @@ from sqlalchemy.orm import Session
 from app.infrastructure.db.scoped_repository import WorkspaceScopedRepository
 from app.modules.ingestion.chunker import EmbeddedChunk
 from app.modules.ingestion.models import DocumentChunk
+
+
+@dataclass(frozen=True)
+class SimilarChunkResult:
+    """Chunk returned from workspace-scoped vector search with similarity score."""
+
+    chunk: DocumentChunk
+    score: float
 
 
 class IngestionRepository(WorkspaceScopedRepository[DocumentChunk]):
@@ -141,11 +150,33 @@ class IngestionRepository(WorkspaceScopedRepository[DocumentChunk]):
         top_k: int,
     ) -> list[DocumentChunk]:
         """Return top-k chunks by cosine similarity in the workspace."""
+        return [
+            result.chunk
+            for result in self.search_similar_with_scores(
+                workspace_id=workspace_id,
+                embedding=embedding,
+                top_k=top_k,
+            )
+        ]
+
+    def search_similar_with_scores(
+        self,
+        *,
+        workspace_id: UUID,
+        embedding: list[float],
+        top_k: int,
+    ) -> list[SimilarChunkResult]:
+        """Return top-k chunks with cosine similarity scores in the workspace."""
+        distance_expr = DocumentChunk.embedding.cosine_distance(embedding)
+        score_expr = (1 - distance_expr).label("score")
         stmt = (
-            select(DocumentChunk)
+            select(DocumentChunk, score_expr)
             .where(DocumentChunk.embedding.isnot(None))
-            .order_by(DocumentChunk.embedding.cosine_distance(embedding))
+            .order_by(distance_expr)
             .limit(top_k)
         )
         stmt = self._scoped_filter(stmt, workspace_id)
-        return list(self._session.scalars(stmt).all())
+        rows = self._session.execute(stmt).all()
+        return [
+            SimilarChunkResult(chunk=row[0], score=float(row[1])) for row in rows
+        ]
