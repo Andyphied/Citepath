@@ -5,6 +5,12 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 
+from app.api.agent_errors import (
+    agent_completion_error_handler,
+    agent_orchestration_error_handler,
+    agent_run_not_found_handler,
+    empty_objective_handler,
+)
 from app.api.auth_errors import (
     duplicate_email_handler,
     invalid_credentials_handler,
@@ -28,7 +34,7 @@ from app.api.rag_errors import (
     empty_question_handler,
     query_embedding_error_handler,
 )
-from app.api.routes import auth, conversations, documents, health, ingestion, queries, workspaces
+from app.api.routes import agent_runs, auth, conversations, documents, health, ingestion, queries, workspaces
 from app.api.workspace_errors import (
     already_member_handler,
     duplicate_slug_handler,
@@ -40,6 +46,12 @@ from app.api.workspace_errors import (
 )
 from app.infrastructure.config import get_settings
 from app.infrastructure.rate_limit import RateLimitedError
+from app.modules.agents.exceptions import (
+    AgentCompletionError,
+    AgentOrchestrationError,
+    AgentRunNotFoundError,
+    EmptyObjectiveError,
+)
 from app.modules.auth.exceptions import (
     DuplicateEmailError,
     InvalidCredentialsError,
@@ -105,6 +117,7 @@ def create_app() -> FastAPI:
     app.include_router(documents.router)
     app.include_router(queries.router)
     app.include_router(conversations.router)
+    app.include_router(agent_runs.router)
     app.include_router(ingestion.router)
     app.add_exception_handler(DuplicateEmailError, duplicate_email_handler)
     app.add_exception_handler(InvalidCredentialsError, invalid_credentials_handler)
@@ -139,6 +152,13 @@ def create_app() -> FastAPI:
     )
     app.add_exception_handler(QueryEmbeddingError, query_embedding_error_handler)
     app.add_exception_handler(ChatCompletionError, chat_completion_error_handler)
+    app.add_exception_handler(EmptyObjectiveError, empty_objective_handler)
+    app.add_exception_handler(AgentRunNotFoundError, agent_run_not_found_handler)
+    app.add_exception_handler(
+        AgentOrchestrationError,
+        agent_orchestration_error_handler,
+    )
+    app.add_exception_handler(AgentCompletionError, agent_completion_error_handler)
     app.add_exception_handler(
         RequestValidationError,
         request_validation_exception_handler,

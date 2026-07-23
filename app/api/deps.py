@@ -38,6 +38,9 @@ from app.modules.workspaces.service import WorkspaceService
 from app.infrastructure.storage import create_storage_backend
 from app.modules.rag.conversation_service import ConversationService
 from app.modules.rag.query_service import RagQueryService
+from app.modules.rag.repository import RAGRepository
+from app.modules.agents.repository import AgentRepository
+from app.modules.agents.service import AgentService
 from app.modules.retrieval.service import RetrievalService
 from app.modules.usage.service import UsageService
 
@@ -221,6 +224,11 @@ RequireQueryRagDep = Annotated[
     Depends(require_permission(PermissionAction.QUERY_RAG)),
 ]
 
+RequireRunAgentDep = Annotated[
+    WorkspaceContext,
+    Depends(require_permission(PermissionAction.RUN_AGENT)),
+]
+
 
 def get_document_service(
     db: DbSession,
@@ -288,3 +296,32 @@ def get_conversation_service(
 
 
 ConversationServiceDep = Annotated[ConversationService, Depends(get_conversation_service)]
+
+
+def get_agent_service(
+    db: DbSession,
+    settings: SettingsDep,
+) -> AgentService:
+    """Provide AgentService with retrieval and completion providers."""
+    audit_repository = AuditRepository(db)
+    permission_service = PermissionService(audit_repository)
+    embedding_provider = create_embedding_provider(settings)
+    completion_provider = create_completion_provider(settings)
+    usage_service = UsageService(db)
+    retrieval_service = RetrievalService(
+        db,
+        embedding_provider=embedding_provider,
+        settings=settings,
+    )
+    return AgentService(
+        agent_repository=AgentRepository(db),
+        rag_repository=RAGRepository(db),
+        retrieval_service=retrieval_service,
+        completion_provider=completion_provider,
+        permission_service=permission_service,
+        usage_service=usage_service,
+        settings=settings,
+    )
+
+
+AgentServiceDep = Annotated[AgentService, Depends(get_agent_service)]
