@@ -1,0 +1,20 @@
+{
+  "services": [
+    {
+      "name": "billing-api",
+      "depends_on": ["auth-service", "billing-db", "redis-cache", "api-gateway"]
+    },
+    {
+      "name": "auth-service",
+      "depends_on": ["auth-db", "redis-cache", "notification-service"]
+    },
+    {
+      "name": "notification-service",
+      "depends_on": ["notification-db"]
+    },
+    {
+      "name": "api-gateway",
+      "depends_on": []
+    }
+  ]
+}
