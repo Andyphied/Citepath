@@ -182,6 +182,9 @@ class AgentOrchestrator:
                     '{"action":"call_tool"|"finish","tool_name":"...",'
                     '"arguments":{...},"reason":"..."}. '
                     "Search the knowledge base before making factual recommendations. "
+                    "When you have document IDs, use summarize_document, "
+                    "extract_action_items, or compare_incidents as needed. "
+                    "Use suggest_debugging_steps for service/symptom checklists. "
                     f"Available tools:\n{tools_json}"
                 ),
             },

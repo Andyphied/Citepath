@@ -19,6 +19,16 @@ from app.modules.retrieval.service import RetrievalService
 from app.modules.workspaces.context import WorkspaceContext
 
 
+def _registry(retrieval_service=None):
+    return build_tool_registry(
+        retrieval_service=retrieval_service or MagicMock(spec=RetrievalService),
+        document_repository=MagicMock(),
+        ingestion_repository=MagicMock(),
+        completion_provider=MagicMock(),
+        usage_service=MagicMock(),
+    )
+
+
 class SequenceCompletionProvider:
     provider_name = "mock"
 
@@ -72,7 +82,7 @@ def test_orchestrator_calls_search_before_summary(workspace_context) -> None:
         ],
     )
 
-    registry = build_tool_registry(retrieval_service=retrieval_service)
+    registry = _registry(retrieval_service)
     repository = MagicMock()
     repository.count_tool_calls.return_value = 1
     tool_executor = ToolExecutor(registry=registry, agent_repository=repository)
@@ -134,7 +144,7 @@ def test_orchestrator_returns_safe_summary_without_citations(workspace_context) 
         chunks=[],
     )
 
-    registry = build_tool_registry(retrieval_service=retrieval_service)
+    registry = _registry(retrieval_service)
     repository = MagicMock()
     repository.count_tool_calls.return_value = 1
     tool_executor = ToolExecutor(registry=registry, agent_repository=repository)
@@ -215,7 +225,7 @@ def test_orchestrator_filters_related_documents_to_citation_ids(
         ],
     )
 
-    registry = build_tool_registry(retrieval_service=retrieval_service)
+    registry = _registry(retrieval_service)
     repository = MagicMock()
     repository.count_tool_calls.return_value = 1
     tool_executor = ToolExecutor(registry=registry, agent_repository=repository)
@@ -267,7 +277,7 @@ def test_orchestrator_filters_related_documents_to_citation_ids(
 def test_orchestrator_unknown_tool_raises_orchestration_error(
     workspace_context,
 ) -> None:
-    registry = build_tool_registry(retrieval_service=MagicMock(spec=RetrievalService))
+    registry = _registry()
     repository = MagicMock()
     tool_executor = ToolExecutor(registry=registry, agent_repository=repository)
     provider = SequenceCompletionProvider(

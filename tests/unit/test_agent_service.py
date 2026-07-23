@@ -28,6 +28,8 @@ def _build_service(*, agent_repository=None, rag_repository=None) -> AgentServic
         agent_repository=agent_repository or MagicMock(),
         rag_repository=rag_repository or MagicMock(),
         retrieval_service=MagicMock(),
+        document_repository=MagicMock(),
+        ingestion_repository=MagicMock(),
         completion_provider=MagicMock(),
         permission_service=MagicMock(),
         usage_service=MagicMock(),

@@ -58,7 +58,11 @@ class ToolExecutor:
         started_at = time.perf_counter()
         try:
             validated_args = registered.args_model.model_validate(raw_args)
-            output = registered.handler(validated_args, context)
+            output = registered.handler(
+                validated_args,
+                context,
+                agent_run_id=agent_run_id,
+            )
             status = AgentToolCallStatus.SUCCESS
         except ValidationError:
             logger.warning(

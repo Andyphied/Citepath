@@ -317,6 +317,8 @@ def get_agent_service(
         agent_repository=AgentRepository(db),
         rag_repository=RAGRepository(db),
         retrieval_service=retrieval_service,
+        document_repository=DocumentRepository(db),
+        ingestion_repository=IngestionRepository(db),
         completion_provider=completion_provider,
         permission_service=permission_service,
         usage_service=usage_service,

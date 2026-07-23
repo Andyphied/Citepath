@@ -85,6 +85,46 @@ class SearchKnowledgeBaseArgs(BaseModel):
         return stripped
 
 
+class SummarizeDocumentArgs(BaseModel):
+    """Arguments for the summarize_document tool."""
+
+    document_id: UUID
+
+
+class ExtractActionItemsArgs(BaseModel):
+    """Arguments for the extract_action_items tool."""
+
+    document_id: UUID
+
+
+class CompareIncidentsArgs(BaseModel):
+    """Arguments for the compare_incidents tool (2–5 same-workspace documents)."""
+
+    document_ids: list[UUID] = Field(min_length=2, max_length=5)
+
+    @field_validator("document_ids")
+    @classmethod
+    def document_ids_unique(cls, value: list[UUID]) -> list[UUID]:
+        if len(set(value)) != len(value):
+            raise ValueError("document_ids must be unique")
+        return value
+
+
+class SuggestDebuggingStepsArgs(BaseModel):
+    """Arguments for the suggest_debugging_steps tool."""
+
+    service_name: str = Field(min_length=1)
+    symptom: str = Field(min_length=1)
+
+    @field_validator("service_name", "symptom")
+    @classmethod
+    def not_blank(cls, value: str) -> str:
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("Value must not be empty")
+        return stripped
+
+
 class AgentPlanAction(BaseModel):
     """LLM planning step parsed from JSON."""
 

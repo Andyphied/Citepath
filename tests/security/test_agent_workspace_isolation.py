@@ -1,7 +1,8 @@
 """Security tests for agent tool workspace isolation."""
 
 from pathlib import Path
-from uuid import UUID
+from unittest.mock import MagicMock
+from uuid import UUID, uuid4
 
 import pytest
 from alembic import command
@@ -18,8 +19,17 @@ from app.infrastructure.config import reset_settings_cache
 from app.infrastructure.db.enums import DocumentStatus, WorkspaceRole
 from app.infrastructure.db.session import reset_db_engine
 from app.infrastructure.llm.types import EmbeddingResult
-from app.modules.agents.schemas import SearchKnowledgeBaseArgs
+from app.modules.agents.document_loader import ERROR_DOCUMENT_NOT_AVAILABLE
+from app.modules.agents.schemas import (
+    CompareIncidentsArgs,
+    ExtractActionItemsArgs,
+    SearchKnowledgeBaseArgs,
+    SummarizeDocumentArgs,
+)
+from app.modules.agents.tools.compare_incidents import execute_compare_incidents
+from app.modules.agents.tools.extract_action_items import execute_extract_action_items
 from app.modules.agents.tools.search_knowledge_base import execute_search_knowledge_base
+from app.modules.agents.tools.summarize_document import execute_summarize_document
 from app.modules.auth.repository import AuthRepository
 from app.modules.documents.repository import DocumentRepository
 from app.modules.ingestion.chunker import EmbeddedChunk
@@ -30,6 +40,13 @@ from app.modules.workspaces.repository import WorkspaceRepository
 
 EMBEDDING_DIMENSIONS = 1536
 REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
+class StubCompletionProvider:
+    provider_name = "mock"
+
+    def complete(self, *, messages, response_format=None):
+        raise AssertionError("LLM must not be called for foreign document IDs")
 
 
 class FixedEmbeddingProvider:
@@ -204,3 +221,80 @@ def test_search_knowledge_base_rejects_foreign_document_id(
     assert output["related_documents"] == []
     assert output["insufficient_context"] is True
     assert str(document_b_id) not in str(output)
+
+
+def test_summarize_document_rejects_foreign_document_id(
+    agent_isolation_context: Session,
+) -> None:
+    workspace_a_id, _workspace_b_id, _document_a_id, document_b_id, user_id = (
+        _seed_workspaces(agent_isolation_context)
+    )
+    context = WorkspaceContext(
+        workspace_id=workspace_a_id,
+        user_id=user_id,
+        role=WorkspaceRole.MEMBER,
+    )
+    output = execute_summarize_document(
+        args=SummarizeDocumentArgs(document_id=document_b_id),
+        context=context,
+        agent_run_id=uuid4(),
+        document_repository=DocumentRepository(agent_isolation_context),
+        ingestion_repository=IngestionRepository(agent_isolation_context),
+        completion_provider=StubCompletionProvider(),
+        usage_service=MagicMock(),
+    )
+    assert output["error"] == ERROR_DOCUMENT_NOT_AVAILABLE
+    assert output["citations"] == []
+    assert "Workspace B" not in str(output)
+    assert "secret" not in str(output).lower()
+
+
+def test_extract_action_items_rejects_foreign_document_id(
+    agent_isolation_context: Session,
+) -> None:
+    workspace_a_id, _workspace_b_id, _document_a_id, document_b_id, user_id = (
+        _seed_workspaces(agent_isolation_context)
+    )
+    context = WorkspaceContext(
+        workspace_id=workspace_a_id,
+        user_id=user_id,
+        role=WorkspaceRole.MEMBER,
+    )
+    output = execute_extract_action_items(
+        args=ExtractActionItemsArgs(document_id=document_b_id),
+        context=context,
+        agent_run_id=uuid4(),
+        document_repository=DocumentRepository(agent_isolation_context),
+        ingestion_repository=IngestionRepository(agent_isolation_context),
+        completion_provider=StubCompletionProvider(),
+        usage_service=MagicMock(),
+    )
+    assert output["error"] == ERROR_DOCUMENT_NOT_AVAILABLE
+    assert output["citations"] == []
+    assert "Workspace B" not in str(output)
+
+
+def test_compare_incidents_rejects_foreign_document_id(
+    agent_isolation_context: Session,
+) -> None:
+    workspace_a_id, _workspace_b_id, document_a_id, document_b_id, user_id = (
+        _seed_workspaces(agent_isolation_context)
+    )
+    context = WorkspaceContext(
+        workspace_id=workspace_a_id,
+        user_id=user_id,
+        role=WorkspaceRole.MEMBER,
+    )
+    output = execute_compare_incidents(
+        args=CompareIncidentsArgs(document_ids=[document_a_id, document_b_id]),
+        context=context,
+        agent_run_id=uuid4(),
+        document_repository=DocumentRepository(agent_isolation_context),
+        ingestion_repository=IngestionRepository(agent_isolation_context),
+        completion_provider=StubCompletionProvider(),
+        usage_service=MagicMock(),
+    )
+    assert output["error"] == ERROR_DOCUMENT_NOT_AVAILABLE
+    assert output["citations"] == []
+    assert "Workspace B" not in str(output)
+    assert "secret" not in str(output).lower()

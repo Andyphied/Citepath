@@ -48,7 +48,12 @@ def test_tool_executor_sanitizes_validation_and_execution_failures(
 ) -> None:
     repository = MagicMock()
 
-    def invalid_handler(args: SearchKnowledgeBaseArgs, context: WorkspaceContext) -> dict:
+    def invalid_handler(
+        args: SearchKnowledgeBaseArgs,
+        context: WorkspaceContext,
+        *,
+        agent_run_id=None,
+    ) -> dict:
         raise RuntimeError("secret db connection string postgres://user:pass@host/db")
 
     registry = {
@@ -84,7 +89,12 @@ def test_tool_executor_sanitizes_validation_and_execution_failures(
 def test_tool_executor_logs_successful_tool_call(workspace_context) -> None:
     repository = MagicMock()
 
-    def handler(args: SearchKnowledgeBaseArgs, context: WorkspaceContext) -> dict:
+    def handler(
+        args: SearchKnowledgeBaseArgs,
+        context: WorkspaceContext,
+        *,
+        agent_run_id=None,
+    ) -> dict:
         return {"content": "result", "citations": []}
 
     registry = {

@@ -23,6 +23,8 @@ from app.modules.agents.schemas import (
 )
 from app.modules.agents.tool_executor import ToolExecutor
 from app.modules.agents.tool_registry import build_tool_registry
+from app.modules.documents.repository import DocumentRepository
+from app.modules.ingestion.repository import IngestionRepository
 from app.modules.rag.exceptions import ConversationNotFoundError
 from app.modules.rag.repository import RAGRepository
 from app.modules.rag.schemas import CitationResponse
@@ -43,6 +45,8 @@ class AgentService:
         agent_repository: AgentRepository,
         rag_repository: RAGRepository,
         retrieval_service: RetrievalService,
+        document_repository: DocumentRepository,
+        ingestion_repository: IngestionRepository,
         completion_provider: ChatCompletionProvider,
         permission_service: PermissionService,
         usage_service: UsageService,
@@ -55,7 +59,13 @@ class AgentService:
         self._permission_service = permission_service
         self._usage_service = usage_service
         self._settings = settings or get_settings()
-        registry = build_tool_registry(retrieval_service=retrieval_service)
+        registry = build_tool_registry(
+            retrieval_service=retrieval_service,
+            document_repository=document_repository,
+            ingestion_repository=ingestion_repository,
+            completion_provider=completion_provider,
+            usage_service=usage_service,
+        )
         tool_executor = ToolExecutor(
             registry=registry,
             agent_repository=agent_repository,
