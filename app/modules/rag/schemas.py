@@ -1,5 +1,6 @@
 """RAG request and response schemas."""
 
+from datetime import datetime
 from typing import Any, Literal
 from uuid import UUID
 
@@ -46,6 +47,47 @@ class QueryResponse(BaseModel):
     citations: list[CitationResponse]
     suggested_followups: list[str]
     insufficient_context: bool
+
+
+class ConversationSummaryResponse(BaseModel):
+    """Summary row for a user's RAG conversation."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    title: str | None
+    mode: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class ConversationListResponse(BaseModel):
+    """Paginated list of the caller's conversations in a workspace."""
+
+    items: list[ConversationSummaryResponse]
+    total: int
+    page: int
+    page_size: int
+
+
+class MessageResponse(BaseModel):
+    """Persisted conversation message with optional citation metadata."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    role: str
+    content: str
+    metadata: dict[str, Any] | None = None
+    citations: list[CitationResponse] = Field(default_factory=list)
+    created_at: datetime
+
+
+class ConversationDetailResponse(BaseModel):
+    """Full conversation with ordered messages."""
+
+    conversation: ConversationSummaryResponse
+    messages: list[MessageResponse]
 
 
 class ContextChunk(BaseModel):

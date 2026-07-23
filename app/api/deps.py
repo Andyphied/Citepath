@@ -36,6 +36,7 @@ from app.modules.workspaces.permissions import PermissionAction, PermissionServi
 from app.modules.workspaces.repository import WorkspaceRepository
 from app.modules.workspaces.service import WorkspaceService
 from app.infrastructure.storage import create_storage_backend
+from app.modules.rag.conversation_service import ConversationService
 from app.modules.rag.query_service import RagQueryService
 from app.modules.retrieval.service import RetrievalService
 from app.modules.usage.service import UsageService
@@ -275,3 +276,15 @@ def get_rag_query_service(
 
 
 RagQueryServiceDep = Annotated[RagQueryService, Depends(get_rag_query_service)]
+
+
+def get_conversation_service(
+    db: DbSession,
+) -> ConversationService:
+    """Provide ConversationService with permission enforcement."""
+    audit_repository = AuditRepository(db)
+    permission_service = PermissionService(audit_repository)
+    return ConversationService(db, permission_service)
+
+
+ConversationServiceDep = Annotated[ConversationService, Depends(get_conversation_service)]

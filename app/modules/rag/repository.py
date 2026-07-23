@@ -3,7 +3,7 @@
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.infrastructure.db.enums import ConversationMode, MessageRole
@@ -92,4 +92,34 @@ class RAGRepository(WorkspaceScopedRepository[Conversation]):
             .order_by(Message.created_at)
         )
         return list(self._session.scalars(stmt).all())
+
+    def list_conversations_for_user_paginated(
+        self,
+        *,
+        workspace_id: UUID,
+        user_id: UUID,
+        page: int,
+        page_size: int,
+    ) -> tuple[list[Conversation], int]:
+        """Return a paginated conversation list for a user within a workspace."""
+        conditions = [
+            Conversation.workspace_id == workspace_id,
+            Conversation.user_id == user_id,
+        ]
+
+        total = self._session.scalar(
+            select(func.count()).select_from(Conversation).where(*conditions)
+        )
+        total = int(total or 0)
+
+        offset = (page - 1) * page_size
+        stmt = (
+            select(Conversation)
+            .where(*conditions)
+            .order_by(Conversation.created_at.desc())
+            .offset(offset)
+            .limit(page_size)
+        )
+        items = list(self._session.scalars(stmt).all())
+        return items, total
 

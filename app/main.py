@@ -28,7 +28,7 @@ from app.api.rag_errors import (
     empty_question_handler,
     query_embedding_error_handler,
 )
-from app.api.routes import auth, documents, health, ingestion, queries, workspaces
+from app.api.routes import auth, conversations, documents, health, ingestion, queries, workspaces
 from app.api.workspace_errors import (
     already_member_handler,
     duplicate_slug_handler,
@@ -104,6 +104,7 @@ def create_app() -> FastAPI:
     app.include_router(workspaces.router)
     app.include_router(documents.router)
     app.include_router(queries.router)
+    app.include_router(conversations.router)
     app.include_router(ingestion.router)
     app.add_exception_handler(DuplicateEmailError, duplicate_email_handler)
     app.add_exception_handler(InvalidCredentialsError, invalid_credentials_handler)
