@@ -2,7 +2,9 @@
 
 > **Epic:** Epic 6: RAG Question Answering  
 > **Story ID:** RAG-003
-> **Status:** in_progress
+> **Status:** completed
+> **Completed:** 2026-07-23
+> **Implementation note:** [RAG-003](../docs/implementation-notes/RAG-003.md)
 
 **User Story**
 
