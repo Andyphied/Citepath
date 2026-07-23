@@ -22,7 +22,13 @@ from app.api.document_errors import (
     unsupported_file_type_handler,
 )
 from app.api.ingestion_errors import ingestion_job_not_found_handler
-from app.api.routes import auth, documents, health, ingestion, workspaces
+from app.api.rag_errors import (
+    chat_completion_error_handler,
+    conversation_not_found_handler,
+    empty_question_handler,
+    query_embedding_error_handler,
+)
+from app.api.routes import auth, documents, health, ingestion, queries, workspaces
 from app.api.workspace_errors import (
     already_member_handler,
     duplicate_slug_handler,
@@ -57,6 +63,12 @@ from app.modules.observability.errors import (
 from app.modules.observability.logging import configure_logging
 from app.modules.observability.middleware import RequestIdMiddleware
 from app.modules.observability.request_logging import RequestLoggingMiddleware
+from app.modules.rag.exceptions import (
+    ChatCompletionError,
+    ConversationNotFoundError,
+    EmptyQuestionError,
+)
+from app.modules.retrieval.exceptions import QueryEmbeddingError
 from app.modules.workspaces.exceptions import (
     AlreadyMemberError,
     DuplicateSlugError,
@@ -91,6 +103,7 @@ def create_app() -> FastAPI:
     app.include_router(auth.router)
     app.include_router(workspaces.router)
     app.include_router(documents.router)
+    app.include_router(queries.router)
     app.include_router(ingestion.router)
     app.add_exception_handler(DuplicateEmailError, duplicate_email_handler)
     app.add_exception_handler(InvalidCredentialsError, invalid_credentials_handler)
@@ -118,6 +131,13 @@ def create_app() -> FastAPI:
         IngestionJobNotFoundError,
         ingestion_job_not_found_handler,
     )
+    app.add_exception_handler(EmptyQuestionError, empty_question_handler)
+    app.add_exception_handler(
+        ConversationNotFoundError,
+        conversation_not_found_handler,
+    )
+    app.add_exception_handler(QueryEmbeddingError, query_embedding_error_handler)
+    app.add_exception_handler(ChatCompletionError, chat_completion_error_handler)
     app.add_exception_handler(
         RequestValidationError,
         request_validation_exception_handler,

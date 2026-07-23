@@ -14,7 +14,10 @@ from app.infrastructure.rate_limit import (
     RateLimitedError,
     check_login_rate_limit,
 )
-from app.infrastructure.storage import create_storage_backend
+from app.infrastructure.llm.factory import (
+    create_completion_provider,
+    create_embedding_provider,
+)
 from app.modules.audit.repository import AuditRepository
 from app.modules.auth.exceptions import TokenInvalidError, UnauthorizedError
 from app.modules.auth.jwt import decode_access_token
@@ -32,6 +35,10 @@ from app.modules.workspaces.exceptions import WorkspaceForbiddenError
 from app.modules.workspaces.permissions import PermissionAction, PermissionService
 from app.modules.workspaces.repository import WorkspaceRepository
 from app.modules.workspaces.service import WorkspaceService
+from app.infrastructure.storage import create_storage_backend
+from app.modules.rag.query_service import RagQueryService
+from app.modules.retrieval.service import RetrievalService
+from app.modules.usage.service import UsageService
 
 DbSession = Annotated[Session, Depends(get_db)]
 
@@ -208,6 +215,11 @@ RequireViewDocumentsDep = Annotated[
     Depends(require_permission(PermissionAction.VIEW_DOCUMENTS)),
 ]
 
+RequireQueryRagDep = Annotated[
+    WorkspaceContext,
+    Depends(require_permission(PermissionAction.QUERY_RAG)),
+]
+
 
 def get_document_service(
     db: DbSession,
@@ -235,3 +247,31 @@ def get_ingestion_service(db: DbSession) -> IngestionService:
 
 
 IngestionServiceDep = Annotated[IngestionService, Depends(get_ingestion_service)]
+
+
+def get_rag_query_service(
+    db: DbSession,
+    settings: SettingsDep,
+) -> RagQueryService:
+    """Provide RagQueryService with retrieval and completion providers."""
+    audit_repository = AuditRepository(db)
+    permission_service = PermissionService(audit_repository)
+    embedding_provider = create_embedding_provider(settings)
+    completion_provider = create_completion_provider(settings)
+    usage_service = UsageService(db)
+    retrieval_service = RetrievalService(
+        db,
+        embedding_provider=embedding_provider,
+        settings=settings,
+    )
+    return RagQueryService(
+        db,
+        retrieval_service=retrieval_service,
+        completion_provider=completion_provider,
+        permission_service=permission_service,
+        usage_service=usage_service,
+        settings=settings,
+    )
+
+
+RagQueryServiceDep = Annotated[RagQueryService, Depends(get_rag_query_service)]
