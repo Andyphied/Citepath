@@ -2,7 +2,9 @@
 
 > **Epic:** Epic 7: AI Agent Incident Investigation  
 > **Story ID:** AGENT-008
-> **Status:** pending
+> **Status:** completed  
+> **Completed:** 2026-07-23  
+> **Implementation note:** [AGENT-BATCH-001](../docs/implementation-notes/AGENT-BATCH-001.md)
 
 **User Story**
 
