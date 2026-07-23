@@ -17,8 +17,15 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.execute("ALTER TYPE usage_operation ADD VALUE IF NOT EXISTS 'embedding_document'")
-    op.execute("ALTER TYPE usage_operation ADD VALUE IF NOT EXISTS 'embedding_query'")
+    # PostgreSQL requires committing new enum values before they can be used in DML.
+    with op.get_context().autocommit_block():
+        op.execute(
+            "ALTER TYPE usage_operation ADD VALUE IF NOT EXISTS 'embedding_document'"
+        )
+        op.execute(
+            "ALTER TYPE usage_operation ADD VALUE IF NOT EXISTS 'embedding_query'"
+        )
+
     op.execute(
         """
         UPDATE usage_events
