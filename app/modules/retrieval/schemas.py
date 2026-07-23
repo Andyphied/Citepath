@@ -7,6 +7,8 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 DEFAULT_TOP_K = 8
 CONTENT_PREVIEW_MAX_LENGTH = 200
+ALLOWED_FILTER_FILE_TYPES = frozenset({"md", "txt", "pdf", "json"})
+MAX_FILTER_SOURCE_TYPE_LENGTH = 64
 
 
 class DocumentMetadata(BaseModel):
@@ -39,6 +41,39 @@ class RetrievalSearchResult(BaseModel):
     insufficient_context: bool
     top_k: int
     min_score: float
+
+
+class RetrievalFilters(BaseModel):
+    """Optional metadata filters applied during vector search."""
+
+    file_type: str | None = None
+    source_type: str | None = None
+    document_id: UUID | None = None
+
+    @field_validator("file_type")
+    @classmethod
+    def validate_file_type(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip().lower()
+        if normalized not in ALLOWED_FILTER_FILE_TYPES:
+            allowed = ", ".join(sorted(ALLOWED_FILTER_FILE_TYPES))
+            raise ValueError(f"file_type must be one of: {allowed}")
+        return normalized
+
+    @field_validator("source_type")
+    @classmethod
+    def validate_source_type(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("source_type must not be blank")
+        if len(normalized) > MAX_FILTER_SOURCE_TYPE_LENGTH:
+            raise ValueError(
+                f"source_type must be at most {MAX_FILTER_SOURCE_TYPE_LENGTH} characters"
+            )
+        return normalized
 
 
 class RetrievalSearchInput(BaseModel):

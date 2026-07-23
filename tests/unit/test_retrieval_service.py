@@ -9,7 +9,7 @@ from app.infrastructure.llm.types import EmbeddingResult
 from app.modules.ingestion.models import DocumentChunk
 from app.modules.ingestion.repository import SimilarChunkResult
 from app.modules.retrieval.exceptions import EmptyQueryError, QueryEmbeddingError
-from app.modules.retrieval.schemas import DEFAULT_TOP_K
+from app.modules.retrieval.schemas import DEFAULT_TOP_K, RetrievalFilters
 from app.modules.retrieval.service import RetrievalService
 
 
@@ -274,3 +274,55 @@ def test_search_caches_query_embedding_within_request(
     )
 
     assert provider.calls == [["same query"]]
+
+
+def test_search_passes_metadata_filters_to_repository(
+    workspace_id,
+    user_id,
+) -> None:
+    document_id = uuid4()
+    chunk = _chunk(
+        workspace_id=workspace_id,
+        document_id=document_id,
+        content="PDF-only content",
+    )
+
+    session = MagicMock()
+    service = RetrievalService(
+        session,
+        embedding_provider=MockEmbeddingProvider(),
+        settings=StubSettings(),
+    )
+    service._retrieval_repository = MagicMock()
+    service._retrieval_repository.search_similar_with_scores.return_value = [
+        SimilarChunkResult(chunk=chunk, score=0.9),
+    ]
+    service._document_repository = MagicMock()
+    service._document_repository.get_by_id.return_value = MagicMock(
+        id=document_id,
+        title="PDF Doc",
+        source_type="runbook",
+        file_type="pdf",
+    )
+
+    filters = RetrievalFilters(file_type="pdf", source_type="runbook", document_id=document_id)
+    service.search(
+        query="filtered search",
+        workspace_id=workspace_id,
+        user_id=user_id,
+        filters=filters,
+    )
+
+    service._retrieval_repository.search_similar_with_scores.assert_called_once_with(
+        workspace_id=workspace_id,
+        embedding=[1.0] * 4,
+        top_k=DEFAULT_TOP_K,
+        file_type="pdf",
+        source_type="runbook",
+        document_id=document_id,
+    )
+
+
+def test_retrieval_filters_rejects_invalid_file_type() -> None:
+    with pytest.raises(ValueError):
+        RetrievalFilters(file_type="docx")

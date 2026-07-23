@@ -16,13 +16,18 @@ from app.modules.retrieval.embeddings import (
     QueryEmbeddingError as EmbeddingFailure,
     embed_query_text,
 )
-from app.modules.retrieval.exceptions import EmptyQueryError, QueryEmbeddingError
+from app.modules.retrieval.exceptions import (
+    EmptyQueryError,
+    InvalidRetrievalFilterError,
+    QueryEmbeddingError,
+)
 from app.modules.retrieval.repository import RetrievalRepository
 from app.modules.retrieval.schemas import (
     CONTENT_PREVIEW_MAX_LENGTH,
     DEFAULT_TOP_K,
     DocumentMetadata,
     RetrievedChunk,
+    RetrievalFilters,
     RetrievalSearchInput,
     RetrievalSearchResult,
 )
@@ -58,9 +63,11 @@ class RetrievalService:
         top_k: int = DEFAULT_TOP_K,
         min_score: float | None = None,
         metadata: dict[str, Any] | None = None,
+        filters: RetrievalFilters | None = None,
     ) -> RetrievalSearchResult:
         """Embed the query, search workspace chunks, and return scored matches."""
         validated = self._validate_query(query=query, top_k=top_k)
+        validated_filters = self._validate_filters(filters)
         threshold = (
             self._settings.RETRIEVAL_MIN_SCORE if min_score is None else min_score
         )
@@ -76,6 +83,9 @@ class RetrievalService:
             workspace_id=workspace_id,
             embedding=embedding,
             top_k=validated.top_k,
+            file_type=validated_filters.file_type if validated_filters else None,
+            source_type=validated_filters.source_type if validated_filters else None,
+            document_id=validated_filters.document_id if validated_filters else None,
         )
 
         qualifying = [
@@ -97,6 +107,11 @@ class RetrievalService:
             candidate_count=len(similar_chunks),
             qualifying_count=len(chunks),
             insufficient_context=insufficient_context,
+            file_type=validated_filters.file_type if validated_filters else None,
+            source_type=validated_filters.source_type if validated_filters else None,
+            document_id=(
+                str(validated_filters.document_id) if validated_filters and validated_filters.document_id else None
+            ),
         )
 
         return RetrievalSearchResult(
@@ -112,6 +127,15 @@ class RetrievalService:
             return RetrievalSearchInput(query=query, top_k=top_k)
         except ValueError as exc:
             raise EmptyQueryError("Query must not be empty") from exc
+
+    @staticmethod
+    def _validate_filters(filters: RetrievalFilters | None) -> RetrievalFilters | None:
+        if filters is None:
+            return None
+        try:
+            return RetrievalFilters.model_validate(filters.model_dump())
+        except ValueError as exc:
+            raise InvalidRetrievalFilterError(str(exc)) from exc
 
     def _embed_query(
         self,

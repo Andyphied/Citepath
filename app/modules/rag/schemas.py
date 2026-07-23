@@ -6,6 +6,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.modules.retrieval.schemas import RetrievalFilters
+
 ConfidenceLevel = Literal["high", "medium", "low"]
 
 
@@ -14,6 +16,7 @@ class QueryRequest(BaseModel):
 
     question: str = Field(min_length=1)
     conversation_id: UUID | None = None
+    filters: RetrievalFilters | None = None
 
     @field_validator("question")
     @classmethod

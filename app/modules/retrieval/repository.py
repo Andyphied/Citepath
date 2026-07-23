@@ -19,10 +19,16 @@ class RetrievalRepository:
         workspace_id: UUID,
         embedding: list[float],
         top_k: int,
+        file_type: str | None = None,
+        source_type: str | None = None,
+        document_id: UUID | None = None,
     ) -> list[SimilarChunkResult]:
         """Return top-k chunks with scores, always scoped to workspace."""
         return self._ingestion_repository.search_similar_with_scores(
             workspace_id=workspace_id,
             embedding=embedding,
             top_k=top_k,
+            file_type=file_type,
+            source_type=source_type,
+            document_id=document_id,
         )

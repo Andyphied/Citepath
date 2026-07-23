@@ -15,3 +15,11 @@ class QueryEmbeddingError(RetrievalError):
     def __init__(self, message: str) -> None:
         super().__init__(message)
         self.message = message
+
+
+class InvalidRetrievalFilterError(RetrievalError):
+    """Raised when retrieval filter values are invalid."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+        self.message = message

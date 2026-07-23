@@ -22,6 +22,7 @@ from app.modules.auth.repository import AuthRepository
 from app.modules.documents.repository import DocumentRepository
 from app.modules.ingestion.chunker import EmbeddedChunk
 from app.modules.ingestion.repository import IngestionRepository
+from app.modules.retrieval.schemas import RetrievalFilters
 from app.modules.retrieval.service import RetrievalService
 from app.modules.workspaces.repository import WorkspaceRepository
 
@@ -185,3 +186,88 @@ def test_retrieval_service_returns_top_k_chunks_with_scores(
     assert result.chunks[0].document_metadata.document_id == document_id
     assert result.chunks[0].document_metadata.title == "Runbook"
     assert result.chunks[0].document_metadata.source_type == "runbook"
+
+
+def test_retrieval_service_filters_by_file_type(
+    retrieval_context: Session,
+    three_page_pdf_bytes: bytes,
+) -> None:
+    auth_repo = AuthRepository(retrieval_context)
+    workspace_repo = WorkspaceRepository(retrieval_context)
+    document_repo = DocumentRepository(retrieval_context)
+    ingestion_repo = IngestionRepository(retrieval_context)
+
+    user = auth_repo.create_user(
+        email="filter-int@example.com",
+        password_hash="hash",
+        name="Filter User",
+    )
+    workspace = workspace_repo.create_workspace_with_owner(
+        name="Filter Workspace",
+        slug="filter-workspace",
+        created_by=user.id,
+    )
+    md_document = document_repo.create(
+        workspace_id=workspace.id,
+        status=DocumentStatus.INDEXED,
+        title="Markdown Runbook",
+        source_type="runbook",
+        file_type="md",
+    )
+    pdf_document = document_repo.create(
+        workspace_id=workspace.id,
+        status=DocumentStatus.INDEXED,
+        title="PDF Runbook",
+        source_type="runbook",
+        file_type="pdf",
+    )
+
+    query_vector = _embedding(primary=1.0, secondary=0.0)
+    pdf_vector = _embedding(primary=0.95, secondary=0.1)
+    md_vector = _embedding(primary=0.9, secondary=0.2)
+
+    ingestion_repo.replace_chunks_for_document(
+        workspace_id=workspace.id,
+        document_id=md_document.id,
+        embedded_chunks=[
+            EmbeddedChunk(
+                content="Markdown restart steps for billing-api.",
+                chunk_index=0,
+                metadata={"section": "md"},
+                embedding=md_vector,
+                embedding_model="text-embedding-3-small",
+            ),
+        ],
+    )
+    ingestion_repo.replace_chunks_for_document(
+        workspace_id=workspace.id,
+        document_id=pdf_document.id,
+        embedded_chunks=[
+            EmbeddedChunk(
+                content="PDF restart steps for billing-api.",
+                chunk_index=0,
+                metadata={"section": "pdf"},
+                embedding=pdf_vector,
+                embedding_model="text-embedding-3-small",
+            ),
+        ],
+    )
+
+    service = RetrievalService(
+        retrieval_context,
+        embedding_provider=FixedEmbeddingProvider(query_vector),
+        settings=StubSettings(),
+    )
+
+    filtered = service.search(
+        query="How do I restart billing-api?",
+        workspace_id=workspace.id,
+        top_k=8,
+        filters=RetrievalFilters(file_type="pdf"),
+    )
+
+    assert filtered.insufficient_context is False
+    assert len(filtered.chunks) == 1
+    assert filtered.chunks[0].document_metadata.file_type == "pdf"
+    assert filtered.chunks[0].document_metadata.document_id == pdf_document.id
+    assert "PDF restart" in filtered.chunks[0].content_preview

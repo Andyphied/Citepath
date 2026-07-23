@@ -55,4 +55,6 @@ class Document(Base):
     __table_args__ = (
         Index("ix_documents_workspace_id_created_at", "workspace_id", created_at.desc()),
         Index("ix_documents_workspace_id_status", "workspace_id", "status"),
+        Index("ix_documents_workspace_id_file_type", "workspace_id", "file_type"),
+        Index("ix_documents_workspace_id_source_type", "workspace_id", "source_type"),
     )

@@ -32,7 +32,7 @@ from app.modules.rag.schemas import (
     QueryResponse,
 )
 from app.modules.retrieval.exceptions import EmptyQueryError
-from app.modules.retrieval.schemas import RetrievedChunk
+from app.modules.retrieval.schemas import RetrievedChunk, RetrievalFilters
 from app.modules.retrieval.service import RetrievalService
 from app.modules.usage.service import UsageService
 from app.modules.workspaces.context import WorkspaceContext
@@ -81,6 +81,7 @@ class RagQueryService:
         question: str,
         conversation_id: UUID | None = None,
         ip_address: str | None = None,
+        filters: RetrievalFilters | None = None,
     ) -> QueryResponse:
         """Answer a workspace question with retrieval-grounded context."""
         self._permission_service.require(
@@ -116,6 +117,7 @@ class RagQueryService:
                 workspace_id=context.workspace_id,
                 user_id=context.user_id,
                 metadata={"conversation_id": str(conversation.id)},
+                filters=filters,
             )
         except EmptyQueryError as exc:
             raise EmptyQuestionError() from exc

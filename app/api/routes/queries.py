@@ -29,4 +29,5 @@ async def ask_question(
         question=body.question,
         conversation_id=body.conversation_id,
         ip_address=client_ip,
+        filters=body.filters,
     )

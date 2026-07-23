@@ -8,6 +8,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.infrastructure.db.scoped_repository import WorkspaceScopedRepository
+from app.modules.documents.models import Document
 from app.modules.ingestion.chunker import EmbeddedChunk
 from app.modules.ingestion.models import DocumentChunk
 
@@ -165,16 +166,32 @@ class IngestionRepository(WorkspaceScopedRepository[DocumentChunk]):
         workspace_id: UUID,
         embedding: list[float],
         top_k: int,
+        file_type: str | None = None,
+        source_type: str | None = None,
+        document_id: UUID | None = None,
     ) -> list[SimilarChunkResult]:
         """Return top-k chunks with cosine similarity scores in the workspace."""
         distance_expr = DocumentChunk.embedding.cosine_distance(embedding)
         score_expr = (1 - distance_expr).label("score")
-        stmt = (
-            select(DocumentChunk, score_expr)
-            .where(DocumentChunk.embedding.isnot(None))
-            .order_by(distance_expr)
-            .limit(top_k)
+        stmt = select(DocumentChunk, score_expr).where(
+            DocumentChunk.embedding.isnot(None)
         )
+
+        if file_type is not None or source_type is not None:
+            stmt = stmt.join(
+                Document,
+                (DocumentChunk.document_id == Document.id)
+                & (DocumentChunk.workspace_id == Document.workspace_id),
+            )
+            if file_type is not None:
+                stmt = stmt.where(Document.file_type == file_type)
+            if source_type is not None:
+                stmt = stmt.where(Document.source_type == source_type)
+
+        if document_id is not None:
+            stmt = stmt.where(DocumentChunk.document_id == document_id)
+
+        stmt = stmt.order_by(distance_expr).limit(top_k)
         stmt = self._scoped_filter(stmt, workspace_id)
         rows = self._session.execute(stmt).all()
         return [
