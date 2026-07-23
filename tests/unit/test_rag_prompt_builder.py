@@ -63,3 +63,35 @@ def test_parse_completion_payload_raises_on_non_object_json() -> None:
 
     with pytest.raises(ChatCompletionError, match="Chat completion failed"):
         parse_completion_payload('["not", "an", "object"]')
+
+
+def test_build_grounded_prompt_limits_history_to_max_turns() -> None:
+    from app.modules.rag.prompt_builder import MAX_HISTORY_TURNS, build_grounded_prompt
+
+    history = []
+    for turn in range(1, 8):
+        history.append(("user", f"Question {turn}"))
+        history.append(("assistant", f"Answer {turn}"))
+
+    built = build_grounded_prompt(
+        question="Latest question",
+        chunks=[
+            ContextChunk(
+                chunk_id=uuid4(),
+                content="Chunk content",
+                content_preview="Chunk preview",
+                score=0.9,
+                document_id=uuid4(),
+            )
+        ],
+        history=history,
+    )
+    user_content = built.messages[1]["content"]
+    assert "Question 1" not in user_content
+    assert "Answer 1" not in user_content
+    assert "Question 2" not in user_content
+    assert "Answer 2" not in user_content
+    assert "Question 3" in user_content
+    assert "Question 7" in user_content
+    assert "Answer 7" in user_content
+    assert MAX_HISTORY_TURNS == 5

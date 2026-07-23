@@ -9,7 +9,7 @@ from app.modules.rag.exceptions import ChatCompletionError
 from app.modules.rag.schemas import ContextChunk
 
 PROMPT_VERSION = "rag-grounded-v1"
-MAX_HISTORY_TURNS = 4
+MAX_HISTORY_TURNS = 5
 
 SYSTEM_PROMPT = """You are an operational assistant for engineering teams.
 Answer ONLY using facts from the provided CHUNK blocks.
