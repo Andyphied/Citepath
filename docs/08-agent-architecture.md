@@ -60,7 +60,7 @@ Steps:
 3. Loop: plan → validate tool → execute → observe
 4. Terminate at max steps (8) or when LLM signals completion
 5. Generate structured final answer (AGENT-008)
-6. Write audit event `agent_run_completed`
+6. Write audit event `agent.run_completed`
 
 **Limits:** Max 8 tool calls; 120s wall-clock timeout; 16,000 tokens total per run (soft cap).
 
@@ -95,7 +95,8 @@ All tools:
 
 Every invocation creates `agent_tool_calls` row:
 - `tool_name`, `input`, `output`, `latency_ms`, `status`
-- Admin/Owner can list via API
+- List via `GET /workspaces/{workspace_id}/agent-runs/{agent_run_id}/tool-calls`
+- Run creator and Admin/Owner may list; Member/Viewer: own runs only
 
 ## Orchestration Loop
 

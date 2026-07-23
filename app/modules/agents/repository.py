@@ -108,8 +108,10 @@ class AgentRepository(WorkspaceScopedRepository[AgentRun]):
         agent_run_id: UUID,
     ) -> int:
         """Return the number of tool calls logged for an agent run."""
-        stmt = select(AgentToolCall).where(AgentToolCall.agent_run_id == agent_run_id)
-        stmt = self._scoped_filter(stmt, workspace_id)
+        stmt = select(AgentToolCall).where(
+            AgentToolCall.workspace_id == workspace_id,
+            AgentToolCall.agent_run_id == agent_run_id,
+        )
         return len(list(self._session.scalars(stmt).all()))
 
     def list_tool_calls(
@@ -121,8 +123,10 @@ class AgentRepository(WorkspaceScopedRepository[AgentRun]):
         """Return tool calls for an agent run ordered by creation time."""
         stmt = (
             select(AgentToolCall)
-            .where(AgentToolCall.agent_run_id == agent_run_id)
-            .order_by(AgentToolCall.created_at)
+            .where(
+                AgentToolCall.workspace_id == workspace_id,
+                AgentToolCall.agent_run_id == agent_run_id,
+            )
+            .order_by(AgentToolCall.created_at.asc(), AgentToolCall.id.asc())
         )
-        stmt = self._scoped_filter(stmt, workspace_id)
         return list(self._session.scalars(stmt).all())

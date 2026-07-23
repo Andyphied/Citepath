@@ -8,7 +8,7 @@ import pytest
 from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, select, text
 from sqlalchemy.orm import sessionmaker
 
 try:
@@ -21,6 +21,8 @@ from app.infrastructure.db.enums import AgentRunStatus, ConversationMode, Docume
 from app.infrastructure.db.session import reset_db_engine
 from app.infrastructure.llm.types import CompletionResult, EmbeddingResult
 from app.main import create_app
+from app.modules.agents.service import AGENT_RUN_COMPLETED_EVENT, OBJECTIVE_AUDIT_MAX_CHARS
+from app.modules.audit.models import AuditLog
 from app.modules.ingestion.chunker import EmbeddedChunk
 from app.modules.ingestion.repository import IngestionRepository
 
@@ -245,7 +247,7 @@ def _seed_document(session, *, workspace_id: UUID, content: str | None = None):
 
 def test_agent_run_endpoint_completes_with_structured_summary(agent_api_context) -> None:
     client, session, _provider = agent_api_context
-    _user, token = _register(client)
+    user, token = _register(client)
     workspace = _create_workspace(client, token)
     _seed_document(session, workspace_id=UUID(workspace["id"]))
 
@@ -274,6 +276,35 @@ def test_agent_run_endpoint_completes_with_structured_summary(agent_api_context)
     assert detail["objective"] == "billing API 502 after deployment"
     assert detail["status"] == AgentRunStatus.COMPLETED.value
 
+    tool_calls_response = client.get(
+        f"/workspaces/{workspace['id']}/agent-runs/{body['agent_run_id']}/tool-calls",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert tool_calls_response.status_code == 200
+    items = tool_calls_response.json()["items"]
+    assert len(items) == body["tool_calls_count"]
+    assert items[0]["tool_name"] == "search_knowledge_base"
+    assert "query" in items[0]["input"]
+    assert items[0]["output"] is not None
+    assert items[0]["latency_ms"] is not None
+    assert items[0]["created_at"]
+    if len(items) > 1:
+        assert items[0]["created_at"] <= items[1]["created_at"]
+
+    session.expire_all()
+    audit_row = session.scalar(
+        select(AuditLog).where(
+            AuditLog.workspace_id == workspace["id"],
+            AuditLog.event_type == AGENT_RUN_COMPLETED_EVENT,
+        )
+    )
+    assert audit_row is not None
+    assert str(audit_row.actor_user_id) == user["id"]
+    assert audit_row.metadata_["agent_run_id"] == body["agent_run_id"]
+    assert audit_row.metadata_["status"] == AgentRunStatus.COMPLETED.value
+    assert audit_row.metadata_["tool_call_count"] == body["tool_calls_count"]
+    assert audit_row.metadata_["objective"] == "billing API 502 after deployment"
+
 
 def test_agent_run_unknown_tool_returns_non_500(agent_api_context) -> None:
     client, session, provider = agent_api_context
@@ -292,6 +323,17 @@ def test_agent_run_unknown_tool_returns_non_500(agent_api_context) -> None:
     body = response.json()
     assert body["error"]["code"] == "agent_orchestration_failed"
     assert "delete_everything" not in response.text
+
+    session.expire_all()
+    audit_row = session.scalar(
+        select(AuditLog).where(
+            AuditLog.workspace_id == workspace["id"],
+            AuditLog.event_type == AGENT_RUN_COMPLETED_EVENT,
+        )
+    )
+    assert audit_row is not None
+    assert audit_row.metadata_["status"] == AgentRunStatus.FAILED.value
+    assert audit_row.metadata_["tool_call_count"] >= 1
 
 
 def test_agent_run_viewer_allowed_on_post_and_get(agent_api_context) -> None:
@@ -378,6 +420,112 @@ def test_agent_run_cross_workspace_access_returns_404(agent_api_context) -> None
         headers={"Authorization": f"Bearer {token_b}"},
     )
     assert cross_get.status_code == 404
+
+    cross_tool_calls = client.get(
+        f"/workspaces/{workspace_b['id']}/agent-runs/{agent_run_id}/tool-calls",
+        headers={"Authorization": f"Bearer {token_b}"},
+    )
+    assert cross_tool_calls.status_code == 404
+
+
+def test_agent_tool_calls_member_cannot_view_other_users_run(agent_api_context) -> None:
+    client, session, _provider = agent_api_context
+    _owner, owner_token = _register(client, email="agent-tool-owner@example.com")
+    _member, member_token = _register(client, email="agent-tool-member@example.com")
+    workspace = _create_workspace(client, owner_token, slug="agent-tool-member-ws")
+    _invite_member(
+        client,
+        owner_token,
+        workspace["id"],
+        email="agent-tool-member@example.com",
+        role="member",
+    )
+    _seed_document(session, workspace_id=UUID(workspace["id"]))
+
+    create_response = client.post(
+        f"/workspaces/{workspace['id']}/agent-runs",
+        headers={"Authorization": f"Bearer {owner_token}"},
+        json={"objective": "billing API 502 after deployment"},
+    )
+    assert create_response.status_code == 200
+    agent_run_id = create_response.json()["agent_run_id"]
+
+    member_list = client.get(
+        f"/workspaces/{workspace['id']}/agent-runs/{agent_run_id}/tool-calls",
+        headers={"Authorization": f"Bearer {member_token}"},
+    )
+    assert member_list.status_code == 404
+
+    owner_list = client.get(
+        f"/workspaces/{workspace['id']}/agent-runs/{agent_run_id}/tool-calls",
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+    assert owner_list.status_code == 200
+    assert len(owner_list.json()["items"]) >= 1
+
+
+def test_agent_tool_calls_admin_can_view_member_run(agent_api_context) -> None:
+    client, session, _provider = agent_api_context
+    _owner, owner_token = _register(client, email="agent-tool-admin-owner@example.com")
+    _admin, admin_token = _register(client, email="agent-tool-admin@example.com")
+    _member, member_token = _register(client, email="agent-tool-admin-member@example.com")
+    workspace = _create_workspace(client, owner_token, slug="agent-tool-admin-ws")
+    _invite_member(
+        client,
+        owner_token,
+        workspace["id"],
+        email="agent-tool-admin@example.com",
+        role="admin",
+    )
+    _invite_member(
+        client,
+        owner_token,
+        workspace["id"],
+        email="agent-tool-admin-member@example.com",
+        role="member",
+    )
+    _seed_document(session, workspace_id=UUID(workspace["id"]))
+
+    create_response = client.post(
+        f"/workspaces/{workspace['id']}/agent-runs",
+        headers={"Authorization": f"Bearer {member_token}"},
+        json={"objective": "billing API 502 after deployment"},
+    )
+    assert create_response.status_code == 200
+    agent_run_id = create_response.json()["agent_run_id"]
+
+    admin_list = client.get(
+        f"/workspaces/{workspace['id']}/agent-runs/{agent_run_id}/tool-calls",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert admin_list.status_code == 200
+    assert len(admin_list.json()["items"]) >= 1
+
+
+def test_agent_run_audit_truncates_long_objective(agent_api_context) -> None:
+    client, session, _provider = agent_api_context
+    _user, token = _register(client, email="agent-audit-truncate@example.com")
+    workspace = _create_workspace(client, token, slug="agent-audit-truncate")
+    _seed_document(session, workspace_id=UUID(workspace["id"]))
+    long_objective = "billing 502 " + ("x" * OBJECTIVE_AUDIT_MAX_CHARS)
+
+    response = client.post(
+        f"/workspaces/{workspace['id']}/agent-runs",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"objective": long_objective},
+    )
+    assert response.status_code == 200
+
+    session.expire_all()
+    audit_row = session.scalar(
+        select(AuditLog).where(
+            AuditLog.workspace_id == workspace["id"],
+            AuditLog.event_type == AGENT_RUN_COMPLETED_EVENT,
+        )
+    )
+    assert audit_row is not None
+    assert len(audit_row.metadata_["objective"]) == OBJECTIVE_AUDIT_MAX_CHARS + 1
+    assert audit_row.metadata_["objective"].endswith("…")
 
 
 def test_agent_run_rejects_foreign_conversation_id(agent_api_context) -> None:

@@ -6,7 +6,7 @@ from uuid import UUID
 import structlog
 
 from app.infrastructure.config import Settings, get_settings
-from app.infrastructure.db.enums import AgentRunStatus
+from app.infrastructure.db.enums import AgentRunStatus, WorkspaceRole
 from app.infrastructure.llm.completion import ChatCompletionProvider
 from app.modules.agents.exceptions import (
     AgentCompletionError,
@@ -20,9 +20,12 @@ from app.modules.agents.schemas import (
     AgentRunDetailResponse,
     AgentRunRequest,
     AgentRunResponse,
+    AgentToolCallListResponse,
+    AgentToolCallResponse,
 )
 from app.modules.agents.tool_executor import ToolExecutor
 from app.modules.agents.tool_registry import build_tool_registry
+from app.modules.audit.repository import AuditRepository
 from app.modules.documents.repository import DocumentRepository
 from app.modules.ingestion.repository import IngestionRepository
 from app.modules.rag.exceptions import ConversationNotFoundError
@@ -34,6 +37,10 @@ from app.modules.workspaces.context import WorkspaceContext
 from app.modules.workspaces.permissions import PermissionAction, PermissionService
 
 logger = structlog.get_logger(__name__)
+
+AGENT_RUN_COMPLETED_EVENT = "agent.run_completed"
+OBJECTIVE_AUDIT_MAX_CHARS = 200
+_ADMIN_ROLES = frozenset({WorkspaceRole.OWNER, WorkspaceRole.ADMIN})
 
 
 class AgentService:
@@ -50,6 +57,7 @@ class AgentService:
         completion_provider: ChatCompletionProvider,
         permission_service: PermissionService,
         usage_service: UsageService,
+        audit_repository: AuditRepository,
         settings: Settings | None = None,
     ) -> None:
         self._agent_repository = agent_repository
@@ -58,6 +66,7 @@ class AgentService:
         self._completion_provider = completion_provider
         self._permission_service = permission_service
         self._usage_service = usage_service
+        self._audit_repository = audit_repository
         self._settings = settings or get_settings()
         registry = build_tool_registry(
             retrieval_service=retrieval_service,
@@ -126,6 +135,14 @@ class AgentService:
             if request.conversation_id is not None:
                 result_payload["conversation_id"] = str(request.conversation_id)
 
+            self._record_run_completed_audit(
+                context=context,
+                agent_run_id=run.id,
+                objective=objective,
+                tool_call_count=tool_calls_count,
+                status=AgentRunStatus.COMPLETED,
+                ip_address=ip_address,
+            )
             self._agent_repository.update_run(
                 run=run,
                 status=AgentRunStatus.COMPLETED,
@@ -135,6 +152,18 @@ class AgentService:
             )
             status = AgentRunStatus.COMPLETED.value
         except AgentOrchestrationError as exc:
+            tool_calls_count = self._agent_repository.count_tool_calls(
+                workspace_id=context.workspace_id,
+                agent_run_id=run.id,
+            )
+            self._record_run_completed_audit(
+                context=context,
+                agent_run_id=run.id,
+                objective=objective,
+                tool_call_count=tool_calls_count,
+                status=AgentRunStatus.FAILED,
+                ip_address=ip_address,
+            )
             self._agent_repository.update_run(
                 run=run,
                 status=AgentRunStatus.FAILED,
@@ -148,6 +177,18 @@ class AgentService:
             )
             raise
         except AgentCompletionError:
+            tool_calls_count = self._agent_repository.count_tool_calls(
+                workspace_id=context.workspace_id,
+                agent_run_id=run.id,
+            )
+            self._record_run_completed_audit(
+                context=context,
+                agent_run_id=run.id,
+                objective=objective,
+                tool_call_count=tool_calls_count,
+                status=AgentRunStatus.FAILED,
+                ip_address=ip_address,
+            )
             self._agent_repository.update_run(
                 run=run,
                 status=AgentRunStatus.FAILED,
@@ -193,7 +234,7 @@ class AgentService:
             workspace_id=context.workspace_id,
             id=agent_run_id,
         )
-        if run is None or run.user_id != context.user_id:
+        if run is None or not self._can_view_run(context=context, run_user_id=run.user_id):
             raise AgentRunNotFoundError()
 
         citations = _extract_citations_from_tool_calls(
@@ -216,6 +257,50 @@ class AgentService:
             citations=citations,
         )
 
+    def list_tool_calls(
+        self,
+        *,
+        context: WorkspaceContext,
+        agent_run_id: UUID,
+        ip_address: str | None = None,
+    ) -> AgentToolCallListResponse:
+        """Return ordered tool calls for a run the caller may inspect."""
+        self._permission_service.require(
+            context,
+            PermissionAction.RUN_AGENT,
+            ip_address=ip_address,
+        )
+
+        run = self._agent_repository.get_run_by_id(
+            workspace_id=context.workspace_id,
+            id=agent_run_id,
+        )
+        if run is None or not self._can_view_run(context=context, run_user_id=run.user_id):
+            raise AgentRunNotFoundError()
+
+        tool_calls = self._agent_repository.list_tool_calls(
+            workspace_id=context.workspace_id,
+            agent_run_id=run.id,
+        )
+        return AgentToolCallListResponse(
+            items=[
+                AgentToolCallResponse(
+                    id=tool_call.id,
+                    tool_name=tool_call.tool_name,
+                    input=tool_call.input_,
+                    output=tool_call.output,
+                    status=(
+                        tool_call.status.value
+                        if hasattr(tool_call.status, "value")
+                        else str(tool_call.status)
+                    ),
+                    latency_ms=tool_call.latency_ms,
+                    created_at=tool_call.created_at,
+                )
+                for tool_call in tool_calls
+            ]
+        )
+
     def _validate_conversation_id(
         self,
         *,
@@ -232,6 +317,42 @@ class AgentService:
         )
         if conversation is None or conversation.user_id != context.user_id:
             raise ConversationNotFoundError()
+
+    def _can_view_run(self, *, context: WorkspaceContext, run_user_id: UUID) -> bool:
+        """Creator always; Owner/Admin may inspect any workspace run (API design)."""
+        if run_user_id == context.user_id:
+            return True
+        return context.role in _ADMIN_ROLES
+
+    def _record_run_completed_audit(
+        self,
+        *,
+        context: WorkspaceContext,
+        agent_run_id: UUID,
+        objective: str,
+        tool_call_count: int,
+        status: AgentRunStatus,
+        ip_address: str | None,
+    ) -> None:
+        """Flush agent.run_completed audit; committed with subsequent run update."""
+        self._audit_repository.create(
+            workspace_id=context.workspace_id,
+            actor_user_id=context.user_id,
+            event_type=AGENT_RUN_COMPLETED_EVENT,
+            metadata={
+                "agent_run_id": str(agent_run_id),
+                "objective": _truncate_objective(objective),
+                "tool_call_count": tool_call_count,
+                "status": status.value,
+            },
+            ip_address=ip_address,
+        )
+
+
+def _truncate_objective(objective: str) -> str:
+    if len(objective) <= OBJECTIVE_AUDIT_MAX_CHARS:
+        return objective
+    return objective[:OBJECTIVE_AUDIT_MAX_CHARS] + "…"
 
 
 def _extract_citations_from_tool_calls(tool_calls) -> list[CitationResponse]:

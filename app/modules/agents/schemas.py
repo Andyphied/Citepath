@@ -67,6 +67,24 @@ class AgentRunDetailResponse(BaseModel):
     citations: list[CitationResponse] = Field(default_factory=list)
 
 
+class AgentToolCallResponse(BaseModel):
+    """Single persisted tool invocation for list responses."""
+
+    id: UUID
+    tool_name: str
+    input: dict[str, Any] | None = None
+    output: dict[str, Any] | None = None
+    status: str
+    latency_ms: int | None = None
+    created_at: datetime
+
+
+class AgentToolCallListResponse(BaseModel):
+    """Ordered tool calls for an agent run."""
+
+    items: list[AgentToolCallResponse] = Field(default_factory=list)
+
+
 class SearchKnowledgeBaseArgs(BaseModel):
     """Arguments for the search_knowledge_base tool."""
 

@@ -322,6 +322,7 @@ def get_agent_service(
         completion_provider=completion_provider,
         permission_service=permission_service,
         usage_service=usage_service,
+        audit_repository=audit_repository,
         settings=settings,
     )
 
