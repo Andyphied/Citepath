@@ -69,3 +69,40 @@ Delivered the Phase 4 agent core loop: start investigation API, JSON-planning or
 - **AGENT-004→007:** Register remaining tools in registry
 - **AGENT-009:** `GET .../tool-calls` list API
 - **AUDIT-006:** Agent run audit events
+- **ADR-006:** Delimiter wrapping for tool observations (deferred; non-blocking)
+
+## Step 5b Platform Follow-Up
+
+### CI coverage (no workflow change)
+
+`.github/workflows/ci.yml` already covers agent suites via directory globs (same pattern as INFRA-005 / RAG-007):
+
+| Job | Command | Agent coverage |
+|-----|---------|----------------|
+| `unit-tests` | `pytest tests/unit -q` | `tests/unit/test_agent_*.py` (errors, orchestrator, service, tool_executor) |
+| `integration-tests` | `pytest tests/api tests/integration tests/security -q` | `tests/api/test_agent_runs.py`, `tests/security/test_agent_workspace_isolation.py` |
+
+No new CI job or compose service required. README Tests section notes that agent suites are included in those globs and skip without Docker.
+
+### Unblocked Docker-gated tests (Alembic revision length)
+
+**Issue:** Fresh testcontainers failed during `alembic upgrade head` with:
+
+`StringDataRightTruncation: value too long for type character varying(32)`
+
+when writing revision `003_add_embedding_usage_operations` (34 chars) into `alembic_version.version_num`.
+
+**Fix:** Shorten revision id to `003_embedding_usage_ops` (≤32) and point `004_add_document_filter_indexes.down_revision` at it. Filename unchanged.
+
+**Local note:** Environments that never successfully stamped past `002` are fine (fresh CI/testcontainers). If a local DB was left mid-failure on the old id string, recreate the volume or `alembic stamp` after pull.
+
+### Verification results
+
+| Suite | Result |
+|-------|--------|
+| `pytest tests/unit/test_agent_*.py -q` | **12 passed** |
+| `pytest tests/api/test_agent_runs.py tests/security/test_agent_workspace_isolation.py -v` (Docker / testcontainers) | **8 passed** |
+
+### Observed (deferred — not Step 5b)
+
+- SAWarning cartesian product in `AgentRepository` tool-call count/list queries (`agent_runs` × `agent_tool_calls`) — product fix for story-implementer if desired; tests still pass.

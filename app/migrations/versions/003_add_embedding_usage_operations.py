@@ -1,8 +1,10 @@
 """Add granular embedding usage operation enum values.
 
-Revision ID: 003_add_embedding_usage_operations
+Revision ID: 003_embedding_usage_ops
 Revises: 002_add_workspace_slug
 Create Date: 2026-07-16
+
+Note: revision id kept ≤32 chars (alembic_version.version_num VARCHAR(32)).
 
 """
 
@@ -10,7 +12,7 @@ from typing import Sequence, Union
 
 from alembic import op
 
-revision: str = "003_add_embedding_usage_operations"
+revision: str = "003_embedding_usage_ops"
 down_revision: Union[str, None] = "002_add_workspace_slug"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None

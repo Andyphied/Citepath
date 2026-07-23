@@ -1,7 +1,7 @@
 """Add document metadata filter indexes for retrieval.
 
 Revision ID: 004_add_document_filter_indexes
-Revises: 003_add_embedding_usage_operations
+Revises: 003_embedding_usage_ops
 Create Date: 2026-07-23
 
 """
@@ -11,7 +11,7 @@ from typing import Sequence, Union
 from alembic import op
 
 revision: str = "004_add_document_filter_indexes"
-down_revision: Union[str, None] = "003_add_embedding_usage_operations"
+down_revision: Union[str, None] = "003_embedding_usage_ops"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

@@ -47,5 +47,7 @@ Expected: grounded answer with citations from billing runbook / incident docs.
 
 ```bash
 pytest tests/unit -q
-pytest tests/integration tests/api tests/security -q  # requires Docker
+pytest tests/integration tests/api tests/security -q  # requires Docker (testcontainers)
 ```
+
+CI (`.github/workflows/ci.yml`) uses the same directory globs: unit job covers `tests/unit` (including `test_agent_*.py`); integration job covers `tests/api`, `tests/integration`, and `tests/security` (including agent API/isolation suites). API/security tests skip when Docker is unavailable.
