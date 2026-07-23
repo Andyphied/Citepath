@@ -11,3 +11,14 @@ class EmbeddingResult:
     embedding_tokens: int
     model: str
     latency_ms: int
+
+
+@dataclass(frozen=True)
+class CompletionResult:
+    """Normalized chat completion provider response."""
+
+    content: str
+    prompt_tokens: int
+    completion_tokens: int
+    model: str
+    latency_ms: int
