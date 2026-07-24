@@ -6,6 +6,7 @@ from app.modules.documents.sanitization import sanitize_ingestion_error_message
 from app.modules.ingestion.exceptions import IngestionJobNotFoundError
 from app.modules.ingestion.job_repository import IngestionJobRepository
 from app.modules.ingestion.schemas import IngestionJobResponse
+from app.modules.observability.metrics import observe_ingestion_job
 
 
 class IngestionService:
@@ -25,6 +26,7 @@ class IngestionService:
             workspace_id=workspace_id,
             document_id=document_id,
         )
+        observe_ingestion_job(status=job.status.value)
 
         # Import here to avoid circular imports between service and tasks.
         from app.modules.ingestion.tasks import process_ingestion_job

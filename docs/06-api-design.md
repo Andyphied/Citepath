@@ -369,6 +369,6 @@ All admin routes: **Owner, Admin only**.
 | Endpoint | Purpose |
 |----------|---------|
 | `GET /health` | `{ "status": "ok", "db": "ok", "redis": "ok", "worker": "ok" }` |
-| `GET /metrics` | Prometheus text format (basic counters/histograms) |
+| `GET /metrics` | Prometheus text format (basic counters; unauthenticated — restrict at network edge) |
 
 OpenAPI: auto-generated at `/docs` (INFRA-008).

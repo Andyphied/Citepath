@@ -18,6 +18,7 @@ dependencies = [
     "PyJWT>=2.8.0",
     "email-validator>=2.1.0",
     "structlog>=24.0.0",
+    "prometheus_client>=0.20.0",
     "python-multipart>=0.0.9",
     "pypdf>=4.0.0",
     "tiktoken>=0.7.0",

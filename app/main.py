@@ -42,6 +42,7 @@ from app.api.routes import (
     documents,
     health,
     ingestion,
+    metrics,
     queries,
     workspaces,
 )
@@ -85,6 +86,7 @@ from app.modules.observability.errors import (
     unhandled_exception_handler,
 )
 from app.modules.observability.logging import configure_logging
+from app.modules.observability.metrics_middleware import MetricsMiddleware
 from app.modules.observability.middleware import RequestIdMiddleware
 from app.modules.observability.request_logging import RequestLoggingMiddleware
 from app.modules.rag.exceptions import (
@@ -122,10 +124,12 @@ def create_app() -> FastAPI:
         description="Workspace-scoped RAG and incident investigation platform",
         lifespan=lifespan,
     )
-    # RequestLoggingMiddleware is inner; RequestIdMiddleware is outer (runs first on ingress).
+    # Innermost first: Metrics → RequestLogging; RequestId outermost (runs first on ingress).
+    app.add_middleware(MetricsMiddleware)
     app.add_middleware(RequestLoggingMiddleware)
     app.add_middleware(RequestIdMiddleware)
     app.include_router(health.router)
+    app.include_router(metrics.router)
     app.include_router(auth.router)
     app.include_router(workspaces.router)
     app.include_router(documents.router)

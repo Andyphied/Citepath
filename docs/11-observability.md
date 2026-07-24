@@ -104,33 +104,53 @@ Additionally log at info level:
 
 ## Metrics (OBS-006)
 
-Prometheus-compatible `GET /metrics`:
+Prometheus-compatible `GET /metrics` (text exposition format via `prometheus_client`).
+
+**Auth / exposure:** Unauthenticated for MVP scraper simplicity. Treat as an internal endpoint — restrict at the network edge (Compose/VPC/firewall). Do not put tenant identifiers in metric labels.
+
+**MVP counters (shipped):**
 
 | Metric | Type | Labels |
 |--------|------|--------|
 | `http_requests_total` | counter | `method`, `path_template`, `status` |
+| `http_errors_total` | counter | `method`, `path_template`, `status` (≥400) |
+| `ingestion_jobs_total` | counter | `status` (`pending` / `processing` / `completed` / `failed`) |
+| `llm_calls_total` | counter | `operation`, `status` |
+
+- HTTP counters are recorded by `MetricsMiddleware` using route path templates (not raw IDs) to limit cardinality.
+- `GET /metrics` itself is excluded from HTTP counters (avoids scrape feedback).
+- `ingestion_jobs_total` increments on job create (API process) and status transitions in the worker.
+- `llm_calls_total` increments in `UsageService.log_event` (API and worker processes).
+- Worker-side increments live in the worker process memory; the API scrape shows API-process counters only unless a shared/multiprocess collector is added later.
+
+**Deferred (histograms / richer series — P2+):**
+
+| Metric | Type | Labels |
+|--------|------|--------|
 | `http_request_duration_seconds` | histogram | `method`, `path_template` |
 | `ingestion_job_duration_seconds` | histogram | `status` |
 | `ingestion_failures_total` | counter | `error_type` |
 | `rag_query_duration_seconds` | histogram | `insufficient_context` |
 | `llm_request_duration_seconds` | histogram | `provider`, `operation` |
-| `llm_tokens_total` | counter | `workspace_id`, `operation` |
+| `llm_tokens_total` | counter | avoid `workspace_id` on public scrapes |
 | `agent_run_failures_total` | counter | `reason` |
-| `estimated_ai_cost_usd_total` | counter | `workspace_id` |
+| `estimated_ai_cost_usd_total` | counter | avoid `workspace_id` on public scrapes |
 
-Use path templates (`/workspaces/{id}/query`) not raw paths to limit cardinality.
+Use path templates (`/workspaces/{workspace_id}/query`) not raw paths to limit cardinality. Prefer admin/usage APIs for per-workspace token and cost rollups.
 
 ## Required Metrics (Product)
 
-All of the following must be derivable:
+**OBS-006 MVP (Prometheus scrape):** API request count and error rate; ingestion job status transition counts; LLM/embedding call counts.
 
-- API request count, latency, error rate
-- Ingestion job duration and failure count
-- RAG query latency
-- LLM provider latency
-- Token usage by workspace
-- Estimated AI cost by workspace
-- Agent run failures
+All of the following must be derivable (Prometheus and/or logs / admin APIs):
+
+- API request count, latency (`duration_ms` logs today; histogram deferred), error rate
+- Ingestion job duration and failure count (counts via `ingestion_jobs_total`; duration histogram deferred)
+- RAG query latency (structured logs / future histogram)
+- LLM provider latency (usage events + logs / future histogram)
+- Token usage by workspace (admin usage API)
+- Estimated AI cost by workspace (admin usage API)
+- Agent run failures (audit/logs; dedicated counter deferred)
 
 ## Minimum Dashboards / Log Views
 

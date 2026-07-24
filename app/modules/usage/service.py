@@ -11,6 +11,7 @@ import structlog
 from sqlalchemy.orm import Session
 
 from app.infrastructure.db.enums import UsageEventStatus, UsageOperation
+from app.modules.observability.metrics import observe_llm_call
 from app.modules.usage.cost_calculator import estimate_cost_usd
 from app.modules.usage.exceptions import InvalidUsageRangeError
 from app.modules.usage.repository import UsageRepository
@@ -52,6 +53,10 @@ class UsageService:
 
     def log_event(self, event: UsageEventInput) -> None:
         """Persist a usage event; failures are logged and swallowed."""
+        observe_llm_call(
+            operation=event.operation.value,
+            status=event.status.value,
+        )
         try:
             estimated_cost = estimate_cost_usd(
                 provider=event.provider,

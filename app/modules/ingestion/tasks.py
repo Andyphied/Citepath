@@ -23,6 +23,7 @@ from app.modules.ingestion.extractors import (
 from app.modules.ingestion.job_repository import IngestionJobRepository
 from app.modules.ingestion.pipeline import truncate_error_message
 from app.modules.ingestion.repository import IngestionRepository
+from app.modules.observability.metrics import observe_ingestion_job
 from app.modules.usage.service import UsageService
 
 logger = structlog.get_logger(__name__)
@@ -47,6 +48,7 @@ def _fail_ingestion(
         error_message=truncated_message,
         completed_at=completed_at,
     )
+    observe_ingestion_job(status=IngestionJobStatus.FAILED.value)
     document_repository.update_status(
         document=document,
         status=DocumentStatus.FAILED,
@@ -128,6 +130,7 @@ def process_ingestion_job(
             attempt_count=job.attempt_count + 1,
             started_at=started_at,
         )
+        observe_ingestion_job(status=IngestionJobStatus.PROCESSING.value)
         document_repository.update_status(
             document=document,
             status=DocumentStatus.PROCESSING,
@@ -318,6 +321,7 @@ def process_ingestion_job(
             status=IngestionJobStatus.COMPLETED,
             completed_at=completed_at,
         )
+        observe_ingestion_job(status=IngestionJobStatus.COMPLETED.value)
         document_repository.update_status(
             document=document,
             status=DocumentStatus.INDEXED,
