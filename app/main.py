@@ -45,6 +45,7 @@ from app.api.routes import (
     queries,
     workspaces,
 )
+from app.api.audit_errors import invalid_audit_range_handler
 from app.api.usage_errors import invalid_usage_range_handler
 from app.api.workspace_errors import (
     already_member_handler,
@@ -92,6 +93,7 @@ from app.modules.rag.exceptions import (
     EmptyQuestionError,
 )
 from app.modules.retrieval.exceptions import QueryEmbeddingError
+from app.modules.audit.exceptions import InvalidAuditRangeError
 from app.modules.usage.exceptions import InvalidUsageRangeError
 from app.modules.workspaces.exceptions import (
     AlreadyMemberError,
@@ -173,6 +175,7 @@ def create_app() -> FastAPI:
     )
     app.add_exception_handler(AgentCompletionError, agent_completion_error_handler)
     app.add_exception_handler(InvalidUsageRangeError, invalid_usage_range_handler)
+    app.add_exception_handler(InvalidAuditRangeError, invalid_audit_range_handler)
     app.add_exception_handler(
         RequestValidationError,
         request_validation_exception_handler,

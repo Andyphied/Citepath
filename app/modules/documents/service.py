@@ -33,6 +33,7 @@ from app.modules.workspaces.context import WorkspaceContext
 ALLOWED_EXTENSIONS = frozenset({"md", "txt", "pdf", "json"})
 PDF_MAGIC_BYTES = b"%PDF"
 DEFAULT_SOURCE_TYPE = "general"
+DOCUMENT_UPLOADED_EVENT = "document.uploaded"
 DOCUMENT_DELETED_EVENT = "document.deleted"
 DOCUMENT_REINDEX_REQUESTED_EVENT = "document.reindex_requested"
 
@@ -66,6 +67,7 @@ class DocumentService:
         filename: str,
         title: str | None = None,
         source_type: str | None = None,
+        ip_address: str | None = None,
     ) -> DocumentUploadResponse:
         """Validate, store, persist a document, and enqueue ingestion."""
         file_type = self._validate_extension(filename)
@@ -91,6 +93,16 @@ class DocumentService:
             file_type=file_type,
             storage_key=storage_key,
             status=DocumentStatus.UPLOADED,
+        )
+        self._audit_repository.create(
+            workspace_id=context.workspace_id,
+            actor_user_id=context.user_id,
+            event_type=DOCUMENT_UPLOADED_EVENT,
+            metadata={
+                "document_id": str(document.id),
+                "title": document.title,
+            },
+            ip_address=ip_address,
         )
         ingestion_job = self._ingestion_service.create_job_for_document(
             workspace_id=context.workspace_id,

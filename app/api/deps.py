@@ -19,6 +19,7 @@ from app.infrastructure.llm.factory import (
     create_embedding_provider,
 )
 from app.modules.audit.repository import AuditRepository
+from app.modules.audit.service import AuditService
 from app.modules.auth.exceptions import TokenInvalidError, UnauthorizedError
 from app.modules.auth.jwt import decode_access_token
 from app.modules.auth.repository import AuthRepository
@@ -82,7 +83,16 @@ def get_workspace_service(db: DbSession) -> WorkspaceService:
         WorkspaceRepository(db),
         UserRepository(db),
         permission_service,
+        audit_repository,
     )
+
+
+def get_audit_service(db: DbSession) -> AuditService:
+    """Provide AuditService for admin audit log queries."""
+    return AuditService(db)
+
+
+AuditServiceDep = Annotated[AuditService, Depends(get_audit_service)]
 
 
 WorkspaceServiceDep = Annotated[WorkspaceService, Depends(get_workspace_service)]

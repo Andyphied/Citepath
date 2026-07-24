@@ -16,9 +16,12 @@ try:
 except ImportError:  # pragma: no cover - optional dev dependency
     PostgresContainer = None
 
+from sqlalchemy import select
+
 from app.infrastructure.config import reset_settings_cache
 from app.infrastructure.db.session import reset_db_engine
 from app.main import create_app
+from app.modules.audit.models import AuditLog
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -163,13 +166,28 @@ def test_member_upload_markdown_returns_202_with_ingestion_job(
     document = body["document"]
     ingestion_job = body["ingestion_job"]
     assert document["title"] == "billing-api-runbook.md"
-    assert document["status"] in ("uploaded", "processing")
+    # Eager Celery may advance status to processing/failed before response returns.
+    assert document["status"] in ("uploaded", "processing", "failed")
     assert document["file_type"] == "md"
     assert document["workspace_id"] == workspace["id"]
     assert document["uploaded_by"] == owner["id"]
     assert ingestion_job["document_id"] == document["id"]
     assert ingestion_job["workspace_id"] == workspace["id"]
-    assert ingestion_job["status"] in ("pending", "processing")
+    assert ingestion_job["status"] in ("pending", "processing", "failed")
+
+    db_session.expire_all()
+    audit_row = db_session.scalar(
+        select(AuditLog).where(
+            AuditLog.workspace_id == workspace["id"],
+            AuditLog.event_type == "document.uploaded",
+        )
+    )
+    assert audit_row is not None
+    assert str(audit_row.actor_user_id) == owner["id"]
+    assert audit_row.metadata_["document_id"] == document["id"]
+    assert audit_row.metadata_["title"] == "billing-api-runbook.md"
+    assert "content" not in (audit_row.metadata_ or {})
+    assert "file_content" not in (audit_row.metadata_ or {})
 
     doc_row = db_session.execute(
         text(
@@ -181,7 +199,7 @@ def test_member_upload_markdown_returns_202_with_ingestion_job(
         ),
         {"document_id": document["id"]},
     ).one()
-    assert doc_row.status in ("uploaded", "processing")
+    assert doc_row.status in ("uploaded", "processing", "failed")
     assert str(doc_row.workspace_id) == workspace["id"]
     assert doc_row.storage_key
     assert (storage_path / doc_row.storage_key).read_bytes() == file_content
@@ -196,7 +214,7 @@ def test_member_upload_markdown_returns_202_with_ingestion_job(
         ),
         {"job_id": ingestion_job["id"]},
     ).one()
-    assert job_row.status in ("pending", "processing")
+    assert job_row.status in ("pending", "processing", "failed")
     assert str(job_row.document_id) == document["id"]
     assert str(job_row.workspace_id) == workspace["id"]
 

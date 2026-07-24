@@ -111,11 +111,13 @@ def test_upload_persists_document_and_creates_ingestion_job(
     )
     ingestion_service.create_job_for_document.return_value = job_response
 
+    audit_repository = MagicMock()
     service = _build_service(
         repository,
         settings,
         storage=storage,
         ingestion_service=ingestion_service,
+        audit_repository=audit_repository,
     )
     result = service.upload(
         context=workspace_context,
@@ -131,6 +133,16 @@ def test_upload_persists_document_and_creates_ingestion_job(
     assert create_kwargs["title"] == "billing-api-runbook.md"
     assert create_kwargs["file_type"] == "md"
     assert create_kwargs["status"] == DocumentStatus.UPLOADED
+    audit_repository.create.assert_called_once_with(
+        workspace_id=workspace_context.workspace_id,
+        actor_user_id=workspace_context.user_id,
+        event_type="document.uploaded",
+        metadata={
+            "document_id": str(created.id),
+            "title": "billing-api-runbook.md",
+        },
+        ip_address=None,
+    )
     ingestion_service.create_job_for_document.assert_called_once_with(
         workspace_id=workspace_context.workspace_id,
         document_id=created.id,

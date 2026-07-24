@@ -334,7 +334,7 @@ class AgentService:
         status: AgentRunStatus,
         ip_address: str | None,
     ) -> None:
-        """Flush agent.run_completed audit; committed with subsequent run update."""
+        """Persist agent.run_completed audit event."""
         self._audit_repository.create(
             workspace_id=context.workspace_id,
             actor_user_id=context.user_id,

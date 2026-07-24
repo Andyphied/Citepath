@@ -3,6 +3,7 @@
 from uuid import UUID
 
 from app.infrastructure.db.enums import WorkspaceRole
+from app.modules.audit.repository import AuditRepository
 from app.modules.users.models import User
 from app.modules.users.repository import UserRepository
 from app.modules.workspaces.context import WorkspaceContext
@@ -30,6 +31,8 @@ from app.modules.workspaces.slug import (
     is_valid_slug,
 )
 
+MEMBER_ROLE_CHANGED_EVENT = "member.role_changed"
+
 
 class WorkspaceService:
     """Workspace creation and membership orchestration."""
@@ -39,10 +42,12 @@ class WorkspaceService:
         workspace_repository: WorkspaceRepository,
         user_repository: UserRepository,
         permission_service: PermissionService | None = None,
+        audit_repository: AuditRepository | None = None,
     ) -> None:
         self._workspace_repository = workspace_repository
         self._user_repository = user_repository
         self._permission_service = permission_service or PermissionService()
+        self._audit_repository = audit_repository
 
     def create_workspace(
         self,
@@ -132,6 +137,7 @@ class WorkspaceService:
         context: WorkspaceContext,
         target_user_id: UUID,
         role: str,
+        ip_address: str | None = None,
     ) -> WorkspaceMemberResponse:
         """Change a member's role (Owner/Admin only)."""
         target_membership = self._workspace_repository.get_member(
@@ -141,16 +147,17 @@ class WorkspaceService:
         if target_membership is None:
             raise MemberNotFoundError()
 
+        old_role = target_membership.role
         new_role = WorkspaceRole(role)
 
         if context.role == WorkspaceRole.ADMIN:
-            if target_membership.role == WorkspaceRole.OWNER:
+            if old_role == WorkspaceRole.OWNER:
                 self._raise_admin_owner_forbidden(context=context)
             if new_role == WorkspaceRole.OWNER:
                 self._raise_admin_owner_forbidden(context=context)
 
         if (
-            target_membership.role == WorkspaceRole.OWNER
+            old_role == WorkspaceRole.OWNER
             and new_role != WorkspaceRole.OWNER
             and self._workspace_repository.count_owners(context.workspace_id) == 1
         ):
@@ -164,6 +171,19 @@ class WorkspaceService:
         target_user = self._user_repository.get_by_id(target_user_id)
         if target_user is None:
             raise MemberNotFoundError()
+
+        if self._audit_repository is not None and old_role != new_role:
+            self._audit_repository.create(
+                workspace_id=context.workspace_id,
+                actor_user_id=context.user_id,
+                event_type=MEMBER_ROLE_CHANGED_EVENT,
+                metadata={
+                    "target_user_id": str(target_user_id),
+                    "old_role": old_role.value,
+                    "new_role": new_role.value,
+                },
+                ip_address=ip_address,
+            )
 
         return WorkspaceMemberResponse(
             user_id=target_user.id,

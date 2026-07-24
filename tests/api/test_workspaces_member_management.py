@@ -1,10 +1,12 @@
 """API tests for workspace member role change and removal endpoints."""
 
+from pathlib import Path
+
 import pytest
 from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, select, text
 from sqlalchemy.orm import sessionmaker
 
 try:
@@ -15,6 +17,9 @@ except ImportError:  # pragma: no cover - optional dev dependency
 from app.infrastructure.config import reset_settings_cache
 from app.infrastructure.db.session import reset_db_engine
 from app.main import create_app
+from app.modules.audit.models import AuditLog
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def _docker_available() -> bool:
@@ -46,11 +51,12 @@ def postgres_url():
 @pytest.fixture
 def workspace_test_context(postgres_url, minimal_env, monkeypatch):
     """Migrated database, API client, and session with per-test cleanup."""
+    monkeypatch.chdir(REPO_ROOT)
     monkeypatch.setenv("DATABASE_URL", postgres_url)
     reset_settings_cache()
     reset_db_engine()
 
-    alembic_cfg = Config("alembic.ini")
+    alembic_cfg = Config(str(REPO_ROOT / "alembic.ini"))
     command.upgrade(alembic_cfg, "head")
 
     engine = create_engine(postgres_url)
@@ -152,8 +158,8 @@ def test_owner_changes_member_to_viewer_updates_permissions(
     workspace_test_context,
 ) -> None:
     """Acceptance: Owner PATCH member→viewer; invitee sees viewer role."""
-    client, _db_session = workspace_test_context
-    _owner, owner_token = _register_user(
+    client, db_session = workspace_test_context
+    owner, owner_token = _register_user(
         client,
         email="role-change-owner@example.com",
         name="Workspace Owner",
@@ -199,6 +205,19 @@ def test_owner_changes_member_to_viewer_updates_permissions(
     items = list_response.json()["items"]
     assert len(items) == 1
     assert items[0]["role"] == "viewer"
+
+    db_session.expire_all()
+    audit_row = db_session.scalar(
+        select(AuditLog).where(
+            AuditLog.workspace_id == workspace["id"],
+            AuditLog.event_type == "member.role_changed",
+        )
+    )
+    assert audit_row is not None
+    assert str(audit_row.actor_user_id) == owner["id"]
+    assert audit_row.metadata_["target_user_id"] == invitee["id"]
+    assert audit_row.metadata_["old_role"] == "member"
+    assert audit_row.metadata_["new_role"] == "viewer"
 
 
 def test_sole_owner_cannot_remove_self(workspace_test_context) -> None:

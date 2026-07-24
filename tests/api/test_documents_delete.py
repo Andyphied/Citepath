@@ -308,6 +308,17 @@ def test_viewer_delete_returns_403(document_delete_context) -> None:
     session.expire_all()
     assert session.get(Document, document.id) is not None
 
+    audit_row = session.scalar(
+        select(AuditLog).where(
+            AuditLog.workspace_id == workspace["id"],
+            AuditLog.event_type == "failed_authorization",
+        )
+    )
+    assert audit_row is not None
+    assert str(audit_row.actor_user_id) == viewer["id"]
+    assert audit_row.metadata_["action"] == "document_mutate"
+    assert audit_row.metadata_["role"] == "viewer"
+
 
 def test_delete_document_in_other_workspace_returns_404(
     document_delete_context,

@@ -415,9 +415,12 @@ def test_update_member_role_success_as_owner() -> None:
     workspace_repository.update_member_role.return_value = updated_member
     user_repository = MagicMock()
     user_repository.get_by_id.return_value = target
+    audit_repository = MagicMock()
 
     result = WorkspaceService(
-        workspace_repository, user_repository
+        workspace_repository,
+        user_repository,
+        audit_repository=audit_repository,
     ).update_member_role(
         context=context,
         target_user_id=target.id,
@@ -431,6 +434,17 @@ def test_update_member_role_success_as_owner() -> None:
         workspace_id=workspace_id,
         user_id=target.id,
         role=WorkspaceRole.VIEWER,
+    )
+    audit_repository.create.assert_called_once_with(
+        workspace_id=workspace_id,
+        actor_user_id=owner.id,
+        event_type="member.role_changed",
+        metadata={
+            "target_user_id": str(target.id),
+            "old_role": "member",
+            "new_role": "viewer",
+        },
+        ip_address=None,
     )
 
 

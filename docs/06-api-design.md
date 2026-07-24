@@ -317,9 +317,12 @@ All admin routes: **Owner, Admin only**.
 
 | | |
 |--|--|
-| **Purpose** | Query audit trail |
-| **Query** | `event_type`, `from`, `to`, pagination |
-| **Response 200** | Paginated audit events |
+| **Purpose** | Query append-only audit trail (newest first) |
+| **Role** | Owner, Admin (`VIEW_ADMIN_DASHBOARD`) |
+| **Query** | `event_type`, `actor_user_id`, `from`, `to` (ISO-8601; window is `[from, to)`), `page`, `page_size` (max 100) |
+| **Response 200** | `{ "items": [{ "id", "workspace_id", "actor_user_id", "event_type", "metadata", "ip_address", "created_at" }], "total", "page", "page_size" }` |
+| **Errors** | Viewer/Member → `403`; inverted `from`/`to` → `422 invalid_audit_range` |
+| **Notes** | No delete/update API; workspace-scoped only |
 
 ### Additional admin aggregates (ADMIN stories)
 
