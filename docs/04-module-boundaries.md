@@ -224,7 +224,7 @@ tests/
 |--------|--------|
 | **Responsibility** | Read-only aggregations for dashboard |
 | **Owns** | None (query-only) |
-| **Exposes** | Admin HTTP routes for `usage`, `audit-logs` (and future dashboard aggregates) |
+| **Exposes** | Admin HTTP routes for `usage`, `audit-logs`, `documents-overview`, `ingestion-jobs`, `recent-questions`, `failed-jobs` |
 | **Depends on** | `documents`, `ingestion`, `rag`, `usage`, `audit`, `workspaces` |
 | **Must NOT depend on** | LLM providers directly |
 

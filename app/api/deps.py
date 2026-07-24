@@ -20,6 +20,7 @@ from app.infrastructure.llm.factory import (
 )
 from app.modules.audit.repository import AuditRepository
 from app.modules.audit.service import AuditService
+from app.modules.admin.service import AdminService
 from app.modules.auth.exceptions import TokenInvalidError, UnauthorizedError
 from app.modules.auth.jwt import decode_access_token
 from app.modules.auth.repository import AuthRepository
@@ -93,6 +94,14 @@ def get_audit_service(db: DbSession) -> AuditService:
 
 
 AuditServiceDep = Annotated[AuditService, Depends(get_audit_service)]
+
+
+def get_admin_service(db: DbSession) -> AdminService:
+    """Provide AdminService for dashboard aggregations."""
+    return AdminService(db)
+
+
+AdminServiceDep = Annotated[AdminService, Depends(get_admin_service)]
 
 
 WorkspaceServiceDep = Annotated[WorkspaceService, Depends(get_workspace_service)]

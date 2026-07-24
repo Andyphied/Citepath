@@ -54,7 +54,8 @@ may diverge from provider billing because rates are updated manually, input and
 output tokens share one rate, and unknown models leave cost unset. Prefer
 provider invoices for real spend.
 
-Admin summary (Owner/Admin): `GET /workspaces/{workspace_id}/admin/usage`
+Admin summary (Owner/Admin): `GET /workspaces/{workspace_id}/admin/usage`  
+Also: `documents-overview`, `ingestion-jobs`, `recent-questions`, `failed-jobs`, `audit-logs` under `/workspaces/{workspace_id}/admin/`.
 (default last 7 days).
 
 ## Tests

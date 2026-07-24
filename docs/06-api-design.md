@@ -310,8 +310,36 @@ All admin routes: **Owner, Admin only**.
 | | |
 |--|--|
 | **Purpose** | List ingestion jobs with failures highlighted |
-| **Query** | `status`, pagination |
-| **Response 200** | Jobs with document title, error_message, attempt_count |
+| **Query** | `status` (`pending`/`processing`/`completed`/`failed`), `page`, `page_size` (max 100) |
+| **Response 200** | `{ "items": [{ "id", "workspace_id", "document_id", "document_title", "status", "attempt_count", "error_message", "started_at", "completed_at", "created_at" }], "total", "page", "page_size" }` |
+| **Errors** | Viewer/Member → `403` |
+
+### `GET /workspaces/{workspace_id}/admin/documents-overview`
+
+| | |
+|--|--|
+| **Purpose** | Corpus health: totals, counts by status, recent uploads |
+| **Role** | Owner, Admin (`VIEW_ADMIN_DASHBOARD`) |
+| **Response 200** | `{ "workspace_id", "total", "by_status": { "uploaded", "processing", "indexed", "failed" }, "recent_uploads": [{ "id", "title", "status", "status_label", "uploaded_by", "created_at" }] }` |
+| **Errors** | Viewer/Member → `403` |
+
+### `GET /workspaces/{workspace_id}/admin/recent-questions`
+
+| | |
+|--|--|
+| **Purpose** | Recent user RAG questions (preview only; no assistant/system prompts) |
+| **Query** | `page`, `page_size` (default 50, max 100) |
+| **Response 200** | `{ "items": [{ "message_id", "conversation_id", "user_id", "user_name", "user_email", "question_preview", "created_at" }], "total", "page", "page_size" }` |
+| **Errors** | Viewer/Member → `403` |
+
+### `GET /workspaces/{workspace_id}/admin/failed-jobs`
+
+| | |
+|--|--|
+| **Purpose** | Dashboard widget: failed job counts (24h / 7d) + recent failures |
+| **Response 200** | `{ "failed_last_24h", "failed_last_7d", "items": […ingestion job shape…], "empty_message" }` (`empty_message` is `"No failed jobs."` when `failed_last_7d` is 0) |
+| **Notes** | Full filtered list: `GET .../admin/ingestion-jobs?status=failed` |
+| **Errors** | Viewer/Member → `403` |
 
 ### `GET /workspaces/{workspace_id}/admin/audit-logs`
 
@@ -324,11 +352,15 @@ All admin routes: **Owner, Admin only**.
 | **Errors** | Viewer/Member → `403`; inverted `from`/`to` → `422 invalid_audit_range` |
 | **Notes** | No delete/update API; workspace-scoped only |
 
-### Additional admin aggregates (ADMIN stories)
+### Admin aggregates (ADMIN stories)
 
-- `GET .../admin/documents-overview` — counts by status
-- `GET .../admin/recent-questions` — last N user messages from RAG
-- `GET .../admin/failed-jobs` — shortcut filter `status=failed`
+| Endpoint | Story | Notes |
+|----------|-------|-------|
+| `GET .../admin/documents-overview` | ADMIN-001 | Counts by status + recent uploads |
+| `GET .../admin/ingestion-jobs` | ADMIN-002 | Status filter; document title join |
+| `GET .../admin/recent-questions` | ADMIN-003 | Default page size 50 |
+| `GET .../admin/usage` | ADMIN-004 / USAGE-004 | 7-day totals + estimated cost (no duplicate endpoint) |
+| `GET .../admin/failed-jobs` | ADMIN-005 | 24h/7d counts; link clients to `?status=failed` |
 
 ---
 

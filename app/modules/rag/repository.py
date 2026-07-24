@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.infrastructure.db.enums import ConversationMode, MessageRole
 from app.infrastructure.db.scoped_repository import WorkspaceScopedRepository
 from app.modules.rag.models import Conversation, Message
+from app.modules.users.models import User
 
 
 class RAGRepository(WorkspaceScopedRepository[Conversation]):
@@ -122,4 +123,42 @@ class RAGRepository(WorkspaceScopedRepository[Conversation]):
         )
         items = list(self._session.scalars(stmt).all())
         return items, total
+
+    def list_recent_user_questions_paginated(
+        self,
+        *,
+        workspace_id: UUID,
+        page: int,
+        page_size: int,
+    ) -> tuple[list[tuple[Message, Conversation, str | None, str]], int]:
+        """Return recent user messages with conversation and user identity.
+
+        Joins ``users`` for display name/email. Does not return assistant/system
+        messages (avoids exposing full LLM prompts).
+        """
+        conditions = [
+            Message.workspace_id == workspace_id,
+            Message.role == MessageRole.USER,
+        ]
+
+        total = self._session.scalar(
+            select(func.count()).select_from(Message).where(*conditions)
+        )
+        total = int(total or 0)
+
+        offset = (page - 1) * page_size
+        stmt = (
+            select(Message, Conversation, User.name, User.email)
+            .join(Conversation, Conversation.id == Message.conversation_id)
+            .join(User, User.id == Conversation.user_id)
+            .where(*conditions)
+            .order_by(Message.created_at.desc())
+            .offset(offset)
+            .limit(page_size)
+        )
+        rows = list(self._session.execute(stmt).all())
+        return [
+            (message, conversation, user_name, user_email)
+            for message, conversation, user_name, user_email in rows
+        ], total
 

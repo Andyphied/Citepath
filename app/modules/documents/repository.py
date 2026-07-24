@@ -57,6 +57,26 @@ class DocumentRepository(WorkspaceScopedRepository[Document]):
         stmt = self._scoped_filter(stmt, workspace_id)
         return list(self._session.scalars(stmt).all())
 
+    def count_by_status_for_workspace(
+        self,
+        *,
+        workspace_id: UUID,
+    ) -> dict[DocumentStatus, int]:
+        """Return document counts grouped by status for a workspace."""
+        stmt = (
+            select(Document.status, func.count())
+            .where(Document.workspace_id == workspace_id)
+            .group_by(Document.status)
+        )
+        rows = self._session.execute(stmt).all()
+        counts: dict[DocumentStatus, int] = {status: 0 for status in DocumentStatus}
+        for status, count in rows:
+            resolved = (
+                status if isinstance(status, DocumentStatus) else DocumentStatus(status)
+            )
+            counts[resolved] = int(count)
+        return counts
+
     def list_for_workspace_paginated(
         self,
         *,

@@ -3,11 +3,12 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.infrastructure.db.enums import IngestionJobStatus
 from app.infrastructure.db.scoped_repository import WorkspaceScopedRepository
+from app.modules.documents.models import Document
 from app.modules.ingestion.models import IngestionJob
 
 
@@ -75,6 +76,54 @@ class IngestionJobRepository(WorkspaceScopedRepository[IngestionJob]):
         )
         stmt = self._scoped_filter(stmt, workspace_id)
         return self._session.scalar(stmt)
+
+    def list_for_workspace_paginated(
+        self,
+        *,
+        workspace_id: UUID,
+        page: int,
+        page_size: int,
+        status: IngestionJobStatus | None = None,
+    ) -> tuple[list[tuple[IngestionJob, str | None]], int]:
+        """Return paginated jobs with document titles for a workspace."""
+        conditions = [IngestionJob.workspace_id == workspace_id]
+        if status is not None:
+            conditions.append(IngestionJob.status == status)
+
+        total = self._session.scalar(
+            select(func.count()).select_from(IngestionJob).where(*conditions)
+        )
+        total = int(total or 0)
+
+        offset = (page - 1) * page_size
+        stmt = (
+            select(IngestionJob, Document.title)
+            .outerjoin(Document, Document.id == IngestionJob.document_id)
+            .where(*conditions)
+            .order_by(IngestionJob.created_at.desc())
+            .offset(offset)
+            .limit(page_size)
+        )
+        rows = list(self._session.execute(stmt).all())
+        return [(job, title) for job, title in rows], total
+
+    def count_failed_since(
+        self,
+        *,
+        workspace_id: UUID,
+        since: datetime,
+    ) -> int:
+        """Count failed ingestion jobs created at or after ``since``."""
+        total = self._session.scalar(
+            select(func.count())
+            .select_from(IngestionJob)
+            .where(
+                IngestionJob.workspace_id == workspace_id,
+                IngestionJob.status == IngestionJobStatus.FAILED,
+                IngestionJob.created_at >= since,
+            )
+        )
+        return int(total or 0)
 
     def update(
         self,
