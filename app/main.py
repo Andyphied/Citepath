@@ -34,7 +34,18 @@ from app.api.rag_errors import (
     empty_question_handler,
     query_embedding_error_handler,
 )
-from app.api.routes import agent_runs, auth, conversations, documents, health, ingestion, queries, workspaces
+from app.api.routes import (
+    admin,
+    agent_runs,
+    auth,
+    conversations,
+    documents,
+    health,
+    ingestion,
+    queries,
+    workspaces,
+)
+from app.api.usage_errors import invalid_usage_range_handler
 from app.api.workspace_errors import (
     already_member_handler,
     duplicate_slug_handler,
@@ -81,6 +92,7 @@ from app.modules.rag.exceptions import (
     EmptyQuestionError,
 )
 from app.modules.retrieval.exceptions import QueryEmbeddingError
+from app.modules.usage.exceptions import InvalidUsageRangeError
 from app.modules.workspaces.exceptions import (
     AlreadyMemberError,
     DuplicateSlugError,
@@ -119,6 +131,7 @@ def create_app() -> FastAPI:
     app.include_router(conversations.router)
     app.include_router(agent_runs.router)
     app.include_router(ingestion.router)
+    app.include_router(admin.router)
     app.add_exception_handler(DuplicateEmailError, duplicate_email_handler)
     app.add_exception_handler(InvalidCredentialsError, invalid_credentials_handler)
     app.add_exception_handler(RateLimitedError, rate_limited_handler)
@@ -159,6 +172,7 @@ def create_app() -> FastAPI:
         agent_orchestration_error_handler,
     )
     app.add_exception_handler(AgentCompletionError, agent_completion_error_handler)
+    app.add_exception_handler(InvalidUsageRangeError, invalid_usage_range_handler)
     app.add_exception_handler(
         RequestValidationError,
         request_validation_exception_handler,

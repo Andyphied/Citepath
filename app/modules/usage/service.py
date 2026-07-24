@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
@@ -11,9 +12,18 @@ from sqlalchemy.orm import Session
 
 from app.infrastructure.db.enums import UsageEventStatus, UsageOperation
 from app.modules.usage.cost_calculator import estimate_cost_usd
+from app.modules.usage.exceptions import InvalidUsageRangeError
 from app.modules.usage.repository import UsageRepository
+from app.modules.usage.schemas import (
+    UsageByDayResponse,
+    UsageByOperationResponse,
+    UsageTotalsResponse,
+    WorkspaceUsageSummaryResponse,
+)
 
 logger = structlog.get_logger(__name__)
+
+DEFAULT_USAGE_SUMMARY_DAYS = 7
 
 
 @dataclass(frozen=True)
@@ -85,3 +95,68 @@ class UsageService:
             workspace_id=workspace_id,
             job_id=job_id,
         )
+
+    def get_workspace_summary(
+        self,
+        *,
+        workspace_id: UUID,
+        start: datetime | None = None,
+        end: datetime | None = None,
+    ) -> WorkspaceUsageSummaryResponse:
+        """Aggregate usage for a workspace; default window is the last 7 days."""
+        resolved_end = _as_utc(end) if end is not None else datetime.now(UTC)
+        resolved_start = (
+            _as_utc(start)
+            if start is not None
+            else resolved_end - timedelta(days=DEFAULT_USAGE_SUMMARY_DAYS)
+        )
+        if resolved_start >= resolved_end:
+            raise InvalidUsageRangeError()
+
+        totals, by_day, by_operation = self._repository.aggregate_workspace_usage(
+            workspace_id=workspace_id,
+            start=resolved_start,
+            end=resolved_end,
+        )
+
+        return WorkspaceUsageSummaryResponse(
+            workspace_id=workspace_id,
+            from_=resolved_start,
+            to=resolved_end,
+            totals=UsageTotalsResponse(
+                prompt_tokens=totals.prompt_tokens,
+                completion_tokens=totals.completion_tokens,
+                embedding_tokens=totals.embedding_tokens,
+                estimated_cost_usd=totals.estimated_cost_usd,
+                call_count=totals.call_count,
+            ),
+            by_day=[
+                UsageByDayResponse(
+                    date=row.day,
+                    prompt_tokens=row.prompt_tokens,
+                    completion_tokens=row.completion_tokens,
+                    embedding_tokens=row.embedding_tokens,
+                    estimated_cost_usd=row.estimated_cost_usd,
+                    call_count=row.call_count,
+                )
+                for row in by_day
+            ],
+            by_operation=[
+                UsageByOperationResponse(
+                    operation=row.operation,
+                    prompt_tokens=row.prompt_tokens,
+                    completion_tokens=row.completion_tokens,
+                    embedding_tokens=row.embedding_tokens,
+                    estimated_cost_usd=row.estimated_cost_usd,
+                    call_count=row.call_count,
+                )
+                for row in by_operation
+            ],
+        )
+
+
+def _as_utc(value: datetime) -> datetime:
+    """Normalize naive datetimes to UTC-aware."""
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)

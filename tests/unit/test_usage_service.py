@@ -15,6 +15,31 @@ def workspace_id():
     return uuid4()
 
 
+def test_usage_service_logs_llm_event_with_estimated_cost(workspace_id) -> None:
+    session = MagicMock()
+    service = UsageService(session)
+
+    with patch.object(service._repository, "create") as mock_create:
+        service.log_event(
+            UsageEventInput(
+                workspace_id=workspace_id,
+                user_id=uuid4(),
+                provider="openai",
+                model="gpt-4o-mini",
+                operation=UsageOperation.CHAT_COMPLETION,
+                prompt_tokens=800,
+                completion_tokens=200,
+                latency_ms=120,
+                status=UsageEventStatus.SUCCESS,
+            )
+        )
+
+    kwargs = mock_create.call_args.kwargs
+    assert kwargs["estimated_cost_usd"] == Decimal("0.000150")
+    assert kwargs["prompt_tokens"] == 800
+    assert kwargs["completion_tokens"] == 200
+
+
 def test_usage_service_logs_embedding_event(workspace_id) -> None:
     session = MagicMock()
     service = UsageService(session)
@@ -40,7 +65,8 @@ def test_usage_service_logs_embedding_event(workspace_id) -> None:
     assert kwargs["user_id"] is None
     assert kwargs["operation"] == UsageOperation.EMBEDDING
     assert kwargs["embedding_tokens"] == 120
-    assert kwargs["estimated_cost_usd"] == Decimal("0.0000024")
+    # 120/1000 * $0.00002 = $0.0000024 → quantized to 6 dp
+    assert kwargs["estimated_cost_usd"] == Decimal("0.000002")
 
 
 def test_usage_service_swallows_repository_errors(workspace_id) -> None:

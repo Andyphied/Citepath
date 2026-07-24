@@ -301,8 +301,9 @@ All admin routes: **Owner, Admin only**.
 | | |
 |--|--|
 | **Purpose** | Usage summary for dashboard |
-| **Query** | `from`, `to` (ISO dates, default last 7 days) |
-| **Response 200** | `{ "totals": { "prompt_tokens", "completion_tokens", "embedding_tokens", "estimated_cost_usd" }, "by_day": [...], "by_operation": {...} }` |
+| **Query** | `from`, `to` (ISO-8601 datetimes; window is `[from, to)`, default last 7 days ending now UTC) |
+| **Response 200** | `{ "workspace_id", "from", "to", "totals": { "prompt_tokens", "completion_tokens", "embedding_tokens", "estimated_cost_usd", "call_count" }, "by_day": [{ "date", ... }], "by_operation": [{ "operation", ... }] }` |
+| **Errors** | Viewer/Member → `403`; invalid range → `422 invalid_usage_range` |
 
 ### `GET /workspaces/{workspace_id}/admin/ingestion-jobs`
 

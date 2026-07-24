@@ -229,6 +229,19 @@ RequireRunAgentDep = Annotated[
     Depends(require_permission(PermissionAction.RUN_AGENT)),
 ]
 
+RequireViewAdminDashboardDep = Annotated[
+    WorkspaceContext,
+    Depends(require_permission(PermissionAction.VIEW_ADMIN_DASHBOARD)),
+]
+
+
+def get_usage_service(db: DbSession) -> UsageService:
+    """Provide UsageService for admin and AI call sites."""
+    return UsageService(db)
+
+
+UsageServiceDep = Annotated[UsageService, Depends(get_usage_service)]
+
 
 def get_document_service(
     db: DbSession,

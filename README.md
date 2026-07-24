@@ -43,6 +43,20 @@ After seeding and ingestion completes, ask:
 
 Expected: grounded answer with citations from billing runbook / incident docs.
 
+## Usage cost estimates
+
+AtlasOps records token usage on every LLM and embedding call and attaches an
+`estimated_cost_usd` using a static price table in
+`app/modules/usage/cost_calculator.py` (USD per 1K tokens, blended per model).
+
+These figures are **approximate portfolio/demo estimates, not invoices**. They
+may diverge from provider billing because rates are updated manually, input and
+output tokens share one rate, and unknown models leave cost unset. Prefer
+provider invoices for real spend.
+
+Admin summary (Owner/Admin): `GET /workspaces/{workspace_id}/admin/usage`
+(default last 7 days).
+
 ## Tests
 
 ```bash
