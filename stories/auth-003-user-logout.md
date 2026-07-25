@@ -2,8 +2,9 @@
 
 > **Epic:** Epic 1: Authentication and User Accounts  
 > **Story ID:** AUTH-003  
-> **Status:** in_progress  
-> **Implementation note (draft):** [AUTH-003](../docs/implementation-notes/AUTH-003.md)
+> **Status:** completed  
+> **Completed:** 2026-07-25  
+> **Implementation note:** [AUTH-003](../docs/implementation-notes/AUTH-003.md)
 
 **User Story**
 
