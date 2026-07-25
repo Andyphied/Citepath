@@ -9,7 +9,7 @@ from app.modules.auth.schemas import LoginResponse, RegisterResponse, UserRespon
 
 
 class AuthService:
-    """Registration, login, and token issuance."""
+    """Registration, login, logout acknowledgment, and token issuance."""
 
     def __init__(self, auth_repository: AuthRepository, settings: Settings) -> None:
         self._auth_repository = auth_repository
@@ -54,3 +54,11 @@ class AuthService:
             access_token=access_token,
             expires_in=expires_in,
         )
+
+    def logout(self) -> None:
+        """Acknowledge logout.
+
+        MVP JWTs are stateless and are not added to a server-side blocklist.
+        Callers must discard the client-held access token after logout.
+        """
+        return None

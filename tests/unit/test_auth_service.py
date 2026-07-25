@@ -184,3 +184,7 @@ def test_login_raises_invalid_credentials_for_wrong_password(
                 email="user@example.com",
                 password="wrongpassword",
             )
+
+
+def test_logout_is_noop_acknowledgment(auth_service: AuthService) -> None:
+    assert auth_service.logout() is None

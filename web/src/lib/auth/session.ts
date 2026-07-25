@@ -6,6 +6,13 @@ function canUseDom(): boolean {
   return typeof document !== "undefined";
 }
 
+function cookieSecureFlag(): string {
+  if (!canUseDom()) {
+    return "";
+  }
+  return window.location.protocol === "https:" ? "; Secure" : "";
+}
+
 export function getAccessToken(): string | null {
   if (!canUseDom()) {
     return null;
@@ -20,19 +27,27 @@ export function getAccessToken(): string | null {
   return value ? decodeURIComponent(value) : null;
 }
 
+/**
+ * Persist JWT in a JS-readable cookie so:
+ * - Next.js middleware can gate protected routes
+ * - `apiFetch` can inject `Authorization: Bearer …`
+ *
+ * HttpOnly Set-Cookie from the API would break the existing Bearer client
+ * pattern without cookie-auth support on FastAPI; documented in UI-002 note.
+ */
 export function setAccessToken(token: string): void {
   if (!canUseDom()) {
     return;
   }
   const encoded = encodeURIComponent(token);
-  document.cookie = `${AUTH_TOKEN_COOKIE}=${encoded}; Path=/; Max-Age=${TOKEN_MAX_AGE_SECONDS}; SameSite=Lax`;
+  document.cookie = `${AUTH_TOKEN_COOKIE}=${encoded}; Path=/; Max-Age=${TOKEN_MAX_AGE_SECONDS}; SameSite=Lax${cookieSecureFlag()}`;
 }
 
 export function clearAccessToken(): void {
   if (!canUseDom()) {
     return;
   }
-  document.cookie = `${AUTH_TOKEN_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
+  document.cookie = `${AUTH_TOKEN_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax${cookieSecureFlag()}`;
 }
 
 export function isAuthenticated(): boolean {

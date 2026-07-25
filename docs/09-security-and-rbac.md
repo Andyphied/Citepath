@@ -12,7 +12,7 @@ Security model for multi-tenant AtlasOps AI MVP.
 | Token location | `Authorization: Bearer <token>` |
 | Claims | `sub` (user id), `exp`, `iat` |
 | Expiry | Configurable, default 24 hours |
-| Logout | Client discards token; optional Redis JWT `jti` blocklist |
+| Logout | `POST /auth/logout` returns 204; **client must discard JWT** (no Redis blocklist in MVP); optional Redis JWT `jti` blocklist later |
 
 Email normalized to lowercase before storage and lookup.
 
@@ -23,9 +23,10 @@ Email normalized to lowercase before storage and lookup.
 - Expired token → `401` with `error.code: token_expired`
 - Invalid signature → `401` with `token_invalid`
 
-Optional logout blocklist (P1):
+Optional logout blocklist (P1, **not implemented in MVP**):
 - Store `jti` in Redis with TTL = remaining token life
 - Middleware checks blocklist after signature validation
+- Until then, logout is acknowledgment-only; stolen tokens remain usable until `exp`
 
 ## Role Definitions
 

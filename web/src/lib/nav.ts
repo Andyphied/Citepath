@@ -12,9 +12,12 @@ export const PRIMARY_NAV: NavItem[] = [
   { href: "/admin", label: "Admin", adminOnly: true },
 ];
 
-/** All app routes except `/login` require a session cookie (UI-001 stub). */
+/** Public auth routes do not require a session cookie. */
 export function isProtectedPath(pathname: string): boolean {
   if (pathname === "/login" || pathname.startsWith("/login/")) {
+    return false;
+  }
+  if (pathname === "/register" || pathname.startsWith("/register/")) {
     return false;
   }
   return true;

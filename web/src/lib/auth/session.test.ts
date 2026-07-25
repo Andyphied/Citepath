@@ -1,6 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
-import { hasAuthCookie } from "@/lib/auth/session";
+import {
+  clearAccessToken,
+  getAccessToken,
+  hasAuthCookie,
+  setAccessToken,
+} from "@/lib/auth/session";
 import { isProtectedPath } from "@/lib/nav";
 
 describe("hasAuthCookie", () => {
@@ -17,10 +22,26 @@ describe("hasAuthCookie", () => {
 });
 
 describe("isProtectedPath", () => {
-  it("allows login and protects app routes", () => {
+  it("allows auth routes and protects app routes", () => {
     expect(isProtectedPath("/login")).toBe(false);
+    expect(isProtectedPath("/register")).toBe(false);
     expect(isProtectedPath("/documents")).toBe(true);
     expect(isProtectedPath("/ask")).toBe(true);
     expect(isProtectedPath("/")).toBe(true);
+  });
+});
+
+describe("session cookie helpers", () => {
+  afterEach(() => {
+    clearAccessToken();
+  });
+
+  it("sets and clears the access token cookie", () => {
+    setAccessToken("jwt-value");
+    expect(getAccessToken()).toBe("jwt-value");
+    expect(document.cookie).toContain("atlasops_token=");
+
+    clearAccessToken();
+    expect(getAccessToken()).toBeNull();
   });
 });

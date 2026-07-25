@@ -1,6 +1,6 @@
 """Authentication routes."""
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Response, status
 
 from app.api.deps import AuthServiceDep, CurrentUserDep, LoginRateLimitDep
 from app.modules.auth.schemas import (
@@ -46,6 +46,24 @@ def login(
         email=body.email,
         password=body.password,
     )
+
+
+@router.post(
+    "/logout",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+)
+def logout(
+    _current_user: CurrentUserDep,
+    auth_service: AuthServiceDep,
+) -> Response:
+    """Acknowledge logout for an authenticated session.
+
+    MVP uses stateless JWTs with no Redis blocklist. Clients must discard the
+    access token after a successful logout response.
+    """
+    auth_service.logout()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/me", response_model=UserResponse)

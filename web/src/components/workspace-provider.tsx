@@ -9,10 +9,10 @@ import {
   useState,
 } from "react";
 
+import { useAuth } from "@/components/auth-provider";
 import { ApiError } from "@/lib/api/client";
 import { listWorkspaces } from "@/lib/api/workspaces";
 import type { WorkspaceListItem } from "@/lib/api/types";
-import { isAuthenticated } from "@/lib/auth/session";
 import {
   getStoredActiveWorkspaceId,
   resolveActiveWorkspaceId,
@@ -35,13 +35,14 @@ type WorkspaceContextValue = {
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
 
 export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
+  const { user, loading: authLoading } = useAuth();
   const [workspaces, setWorkspaces] = useState<WorkspaceListItem[]>([]);
   const [activeWorkspaceId, setActiveId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    if (!isAuthenticated()) {
+    if (!user) {
       setWorkspaces([]);
       setActiveId(null);
       setLoading(false);
@@ -74,11 +75,14 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
+    if (authLoading) {
+      return;
+    }
     void refresh();
-  }, [refresh]);
+  }, [authLoading, refresh, user?.id]);
 
   const setActiveWorkspaceId = useCallback((workspaceId: string) => {
     setActiveId(workspaceId);
@@ -105,7 +109,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       workspaces,
       activeWorkspaceId,
       activeWorkspace,
-      loading,
+      loading: authLoading || loading,
       error,
       setActiveWorkspaceId,
       refresh,
@@ -115,6 +119,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       workspaces,
       activeWorkspaceId,
       activeWorkspace,
+      authLoading,
       loading,
       error,
       setActiveWorkspaceId,

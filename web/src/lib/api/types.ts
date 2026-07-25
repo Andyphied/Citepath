@@ -17,6 +17,13 @@ export interface User {
   created_at: string;
 }
 
+export interface AuthTokenResponse {
+  user: User;
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+}
+
 export interface WorkspaceListItem {
   id: string;
   name: string;

@@ -60,7 +60,7 @@ export function Sidebar() {
       </nav>
 
       <div className="border-t border-[var(--sidebar-border)] px-4 py-3 text-xs text-[var(--sidebar-muted)]">
-        Demo UI scaffold · UI-001
+        Demo UI · session via /auth/me
       </div>
     </aside>
   );

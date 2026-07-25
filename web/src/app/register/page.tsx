@@ -5,11 +5,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState, type FormEvent } from "react";
 
 import { useAuth } from "@/components/auth-provider";
-import { login } from "@/lib/api/auth";
+import { register } from "@/lib/api/auth";
 import { formatAuthError } from "@/lib/auth/errors";
 import { resolvePostAuthPath } from "@/lib/auth/post-auth";
 
-function LoginForm() {
+function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { establishSession } = useAuth();
@@ -17,6 +17,7 @@ function LoginForm() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -25,10 +26,20 @@ function LoginForm() {
     if (submitting) {
       return;
     }
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
     try {
-      const response = await login({
+      const response = await register({
         email: email.trim(),
         password,
       });
@@ -36,7 +47,7 @@ function LoginForm() {
       router.replace(nextPath);
       router.refresh();
     } catch (err) {
-      setError(formatAuthError(err, "Invalid email or password"));
+      setError(formatAuthError(err, "Unable to create your account."));
     } finally {
       setSubmitting(false);
     }
@@ -53,7 +64,7 @@ function LoginForm() {
           AtlasOps AI
         </p>
         <p className="mt-2 text-[var(--muted)]">
-          Sign in to your workspace knowledge ops console.
+          Create an account to start a workspace knowledge base.
         </p>
 
         <form
@@ -63,13 +74,13 @@ function LoginForm() {
         >
           <div>
             <label
-              htmlFor="login-email"
+              htmlFor="register-email"
               className="block text-sm font-medium text-[var(--ink)]"
             >
               Email
             </label>
             <input
-              id="login-email"
+              id="register-email"
               name="email"
               type="email"
               autoComplete="email"
@@ -82,20 +93,43 @@ function LoginForm() {
 
           <div>
             <label
-              htmlFor="login-password"
+              htmlFor="register-password"
               className="block text-sm font-medium text-[var(--ink)]"
             >
               Password
             </label>
             <input
-              id="login-password"
+              id="register-password"
               name="password"
               type="password"
-              autoComplete="current-password"
+              autoComplete="new-password"
               required
               minLength={8}
               value={password}
               onChange={(event) => setPassword(event.target.value)}
+              className="mt-1.5 w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--ink)] outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]"
+            />
+            <p className="mt-1 text-xs text-[var(--muted)]">
+              At least 8 characters.
+            </p>
+          </div>
+
+          <div>
+            <label
+              htmlFor="register-confirm-password"
+              className="block text-sm font-medium text-[var(--ink)]"
+            >
+              Confirm password
+            </label>
+            <input
+              id="register-confirm-password"
+              name="confirmPassword"
+              type="password"
+              autoComplete="new-password"
+              required
+              minLength={8}
+              value={confirmPassword}
+              onChange={(event) => setConfirmPassword(event.target.value)}
               className="mt-1.5 w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--ink)] outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]"
             />
           </div>
@@ -114,17 +148,17 @@ function LoginForm() {
             disabled={submitting}
             className="w-full rounded-md bg-[var(--accent)] px-3 py-2.5 text-sm font-medium text-white hover:brightness-110 disabled:opacity-60"
           >
-            {submitting ? "Signing in…" : "Sign in"}
+            {submitting ? "Creating account…" : "Create account"}
           </button>
         </form>
 
         <p className="mt-6 text-sm text-[var(--muted)]">
-          New here?{" "}
+          Already have an account?{" "}
           <Link
-            href="/register"
+            href="/login"
             className="font-medium text-[var(--accent)] underline underline-offset-2"
           >
-            Create an account
+            Sign in
           </Link>
         </p>
       </div>
@@ -132,7 +166,7 @@ function LoginForm() {
   );
 }
 
-export default function LoginPage() {
+export default function RegisterPage() {
   return (
     <Suspense
       fallback={
@@ -141,7 +175,7 @@ export default function LoginPage() {
         </div>
       }
     >
-      <LoginForm />
+      <RegisterForm />
     </Suspense>
   );
 }

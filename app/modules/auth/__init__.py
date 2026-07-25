@@ -1,1 +1,1 @@
-"""Authentication module: registration, login, JWT issuance."""
+"""Authentication module: registration, login, logout, JWT issuance."""

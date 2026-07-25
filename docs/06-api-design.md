@@ -60,10 +60,10 @@ Every `{workspace_id}` route validates membership before handler execution. Reso
 
 | | |
 |--|--|
-| **Purpose** | Invalidate session (blocklist if enabled) |
+| **Purpose** | Acknowledge logout for an authenticated session |
 | **Role** | Authenticated |
 | **Response** | `204 No Content` |
-| **Notes** | Client must discard token |
+| **Notes** | MVP has **no Redis JWT blocklist**. The API confirms logout after validating the Bearer token; the **client must discard the JWT**. Subsequent requests with the same token remain valid until expiry unless a future blocklist is added. |
 
 ### `GET /auth/me`
 
