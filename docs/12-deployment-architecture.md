@@ -73,7 +73,7 @@ Source: [diagrams/deployment-diagram.mmd](./diagrams/deployment-diagram.mmd)
 | `redis` | `redis:7-alpine` | 6379 |
 | `api` | Build `Dockerfile` | 8000 |
 | `worker` | Same image, `celery worker` | — |
-| `web` (optional) | Next.js | 3000 |
+| `web` | Next.js (`web/` Dockerfile) | 3000 |
 
 Volumes: `postgres_data`, `uploads_data`.
 

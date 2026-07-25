@@ -87,6 +87,13 @@ class Settings(BaseSettings):
         default="/uploads",
         description="Local filesystem path when STORAGE_BACKEND=local",
     )
+    CORS_ORIGINS: str = Field(
+        default="",
+        description=(
+            "Comma-separated browser origins allowed to call the API. "
+            "In development, defaults to localhost:3000 when empty."
+        ),
+    )
 
     # Conditional (validated below)
     S3_BUCKET: str | None = Field(default=None)

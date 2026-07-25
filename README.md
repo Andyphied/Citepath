@@ -9,7 +9,17 @@ docker compose up --build
 ```
 
 API: http://localhost:8000  
-Health: http://localhost:8000/health/ready
+Health: http://localhost:8000/health/ready  
+Web UI: http://localhost:3000 (Next.js app shell — see `web/README.md`)
+
+Local web dev (without rebuilding the `web` image):
+
+```bash
+cd web
+cp .env.example .env.local
+npm install
+npm run dev
+```
 
 ## Demo dataset (Northstar Cloud)
 

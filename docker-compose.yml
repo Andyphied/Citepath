@@ -1,5 +1,6 @@
-# AtlasOps AI local stack — API, worker, PostgreSQL (pgvector), Redis.
+# AtlasOps AI local stack — API, worker, web UI, PostgreSQL (pgvector), Redis.
 # Fresh clone: docker compose up --build
+# Web UI: http://localhost:3000  API: http://localhost:8000
 # Optional: cp .env.example .env to override defaults for host-native tools.
 
 x-app-environment: &app-environment
@@ -97,6 +98,21 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+
+  # Next.js demo UI (UI-001). Browser calls API via host port 8000.
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+    depends_on:
+      api:
+        condition: service_healthy
 
 volumes:
   postgres_data:

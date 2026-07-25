@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.agent_errors import (
     agent_completion_error_handler,
@@ -57,7 +58,7 @@ from app.api.workspace_errors import (
     user_not_found_handler,
     workspace_forbidden_handler,
 )
-from app.infrastructure.config import get_settings
+from app.infrastructure.config import Environment, get_settings
 from app.infrastructure.rate_limit import RateLimitedError
 from app.modules.agents.exceptions import (
     AgentCompletionError,
@@ -118,16 +119,34 @@ async def lifespan(app: FastAPI):
 def create_app() -> FastAPI:
     """Create the FastAPI application with validated settings."""
     configure_logging()
-    get_settings()
+    settings = get_settings()
     app = FastAPI(
         title="AtlasOps AI",
         description="Workspace-scoped RAG and incident investigation platform",
         lifespan=lifespan,
     )
-    # Innermost first: Metrics → RequestLogging; RequestId outermost (runs first on ingress).
+    # Innermost first: Metrics → RequestLogging; RequestId then CORS outermost.
     app.add_middleware(MetricsMiddleware)
     app.add_middleware(RequestLoggingMiddleware)
     app.add_middleware(RequestIdMiddleware)
+    cors_origins = [
+        origin.strip()
+        for origin in settings.CORS_ORIGINS.split(",")
+        if origin.strip()
+    ]
+    if settings.ENVIRONMENT == Environment.DEVELOPMENT and not cors_origins:
+        cors_origins = [
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+        ]
+    if cors_origins:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=cors_origins,
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
     app.include_router(health.router)
     app.include_router(metrics.router)
     app.include_router(auth.router)
