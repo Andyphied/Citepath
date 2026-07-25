@@ -100,6 +100,7 @@ services:
         condition: service_completed_successfully
 
   # Next.js demo UI (UI-001). Browser calls API via host port 8000.
+  # Local host-native alternative: cd web && npm ci && npm run dev
   web:
     build:
       context: ./web
@@ -113,6 +114,19 @@ services:
     depends_on:
       api:
         condition: service_healthy
+    # Lightweight liveness for compose UX (image has no curl/wget).
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
 
 volumes:
   postgres_data:
