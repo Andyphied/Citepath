@@ -69,4 +69,31 @@ describe("apiFetch", () => {
       status: 0,
     });
   });
+
+  it("does not force Content-Type for FormData bodies", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ ok: true }), {
+        status: 202,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const body = new FormData();
+    body.append("file", new File(["# runbook"], "billing-api-runbook.md"));
+
+    await apiFetch("/workspaces/ws-1/documents", {
+      method: "POST",
+      baseUrl: "http://api.test",
+      token: "test-jwt",
+      body,
+      headers: { "Content-Type": "application/json" },
+    });
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const headers = new Headers(init.headers);
+    expect(headers.get("Content-Type")).toBeNull();
+    expect(headers.get("Authorization")).toBe("Bearer test-jwt");
+    expect(init.body).toBeInstanceOf(FormData);
+  });
 });

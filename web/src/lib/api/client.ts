@@ -70,6 +70,14 @@ export async function apiFetch<T>(
     headers.set("Accept", "application/json");
   }
 
+  // Multipart uploads must leave Content-Type unset so the browser can set
+  // multipart/form-data with the correct boundary. Never force application/json.
+  const isFormData =
+    typeof FormData !== "undefined" && rest.body instanceof FormData;
+  if (isFormData) {
+    headers.delete("Content-Type");
+  }
+
   if (!skipAuth) {
     const accessToken = token === undefined ? getAccessToken() : token;
     if (accessToken) {
