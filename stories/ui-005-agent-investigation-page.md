@@ -2,7 +2,9 @@
 
 > **Epic:** Epic 13: Minimal Demo UI  
 > **Story ID:** UI-005
-> **Status:** in_progress
+> **Status:** completed  
+> **Completed:** 2026-07-29  
+> **Implementation note:** [UI-005](../docs/implementation-notes/UI-005.md)
 
 **User Story**
 
