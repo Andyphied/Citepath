@@ -61,5 +61,5 @@ npm run lint     # eslint
 | `/login` | Auth redirect target (stub) |
 | `/documents` | Stub → UI-003 |
 | `/ask` | RAG Q&A with citations (UI-004) |
-| `/agent` | Stub → UI-005 |
+| `/agent` | Incident investigation with structured summary (UI-005) |
 | `/admin` | Stub → UI-006 (nav gated to owner/admin) |

@@ -104,3 +104,29 @@ export interface QueryResponse {
   suggested_followups: string[];
   insufficient_context: boolean;
 }
+
+/** AGENT-008 structured investigation result (InvestigationSummary). */
+export interface InvestigationSummary {
+  problem_statement: string;
+  summary: string;
+  likely_causes: string[];
+  likely_related_systems: string[];
+  recommended_checks: string[];
+  related_documents: string[];
+  action_items: string[];
+  risks_or_unknowns: string[];
+  next_steps: string[];
+}
+
+export interface AgentRunRequest {
+  objective: string;
+  conversation_id?: string | null;
+}
+
+export interface AgentRunResponse {
+  agent_run_id: string;
+  status: string;
+  summary: InvestigationSummary | null;
+  citations: CitationItem[];
+  tool_calls_count: number;
+}
