@@ -78,3 +78,29 @@ export interface DocumentUploadResponse {
     status: string;
   };
 }
+
+export type ConfidenceLevel = "high" | "medium" | "low" | string;
+
+export interface CitationItem {
+  chunk_id: string;
+  document_id: string;
+  document_title: string | null;
+  chunk_preview: string;
+  score: number;
+  metadata?: Record<string, unknown> | null;
+}
+
+export interface QueryRequest {
+  question: string;
+  conversation_id?: string | null;
+}
+
+export interface QueryResponse {
+  conversation_id: string;
+  message_id: string;
+  answer: string;
+  confidence: ConfidenceLevel;
+  citations: CitationItem[];
+  suggested_followups: string[];
+  insufficient_context: boolean;
+}

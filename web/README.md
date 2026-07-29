@@ -60,6 +60,6 @@ npm run lint     # eslint
 | `/` | Home + workspace context |
 | `/login` | Auth redirect target (stub) |
 | `/documents` | Stub → UI-003 |
-| `/ask` | Stub → UI-004 |
+| `/ask` | RAG Q&A with citations (UI-004) |
 | `/agent` | Stub → UI-005 |
 | `/admin` | Stub → UI-006 (nav gated to owner/admin) |
