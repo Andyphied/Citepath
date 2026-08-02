@@ -102,6 +102,9 @@ def test_process_ingestion_job_sets_processing_status(
         "app.modules.ingestion.tasks.DocumentRepository",
         return_value=document_repository,
     ), patch(
+        "app.modules.ingestion.tasks.chunk_extraction_result",
+        return_value=[MagicMock(chunk_index=0)],
+    ), patch(
         "app.modules.ingestion.tasks.create_embedding_provider",
     ), patch(
         "app.modules.ingestion.tasks.embed_content_chunks",
@@ -655,7 +658,7 @@ def test_process_ingestion_job_completes_embedding_and_storage(
 @patch("app.modules.ingestion.tasks.create_storage_backend")
 @patch("app.modules.ingestion.tasks.get_settings")
 @patch("app.modules.ingestion.tasks.get_session_factory")
-def test_process_ingestion_job_fails_on_embedding_error(
+def test_process_ingestion_job_fails_on_permanent_embedding_error(
     mock_session_factory,
     mock_get_settings,
     mock_create_storage_backend,
@@ -700,7 +703,10 @@ def test_process_ingestion_job_fails_on_embedding_error(
         "app.modules.ingestion.tasks.create_embedding_provider",
     ), patch(
         "app.modules.ingestion.tasks.embed_content_chunks",
-        return_value=EmbeddingError(message="provider timeout"),
+        return_value=EmbeddingError(
+            message="Embedding provider returned 0 vectors for 1 texts",
+            retryable=False,
+        ),
     ), patch(
         "app.modules.ingestion.tasks.UsageService",
     ):
@@ -713,7 +719,331 @@ def test_process_ingestion_job_fails_on_embedding_error(
     assert job_repository.update.call_count == 2
     failure_update = job_repository.update.call_args_list[1].kwargs
     assert failure_update["status"] == IngestionJobStatus.FAILED
-    assert "provider timeout" in failure_update["error_message"]
+    assert "vectors" in failure_update["error_message"]
+    document_repository.update_status.assert_any_call(
+        document=document,
+        status=DocumentStatus.FAILED,
+    )
+
+
+@patch("app.modules.ingestion.tasks.create_storage_backend")
+@patch("app.modules.ingestion.tasks.get_settings")
+@patch("app.modules.ingestion.tasks.get_session_factory")
+def test_process_ingestion_job_retries_transient_embedding_timeout(
+    mock_session_factory,
+    mock_get_settings,
+    mock_create_storage_backend,
+    job_id,
+    workspace_id,
+    document_id,
+) -> None:
+    from celery.exceptions import Retry
+
+    from app.modules.ingestion.embeddings import EmbeddingError
+
+    session = MagicMock()
+    mock_session_factory.return_value = MagicMock(return_value=session)
+    mock_get_settings.return_value = MagicMock(
+        CHUNK_SIZE_TOKENS=1000,
+        CHUNK_OVERLAP_TOKENS=150,
+        EMBEDDING_BATCH_SIZE=64,
+        EMBEDDING_MODEL="text-embedding-3-small",
+    )
+    storage_backend = MagicMock()
+    storage_backend.get.return_value = (FIXTURES_DIR / "sample.txt").read_bytes()
+    mock_create_storage_backend.return_value = storage_backend
+
+    job = _build_job(job_id=job_id, workspace_id=workspace_id, document_id=document_id)
+    document = _build_document(document_id=document_id, workspace_id=workspace_id)
+    document.title = "Sample Text"
+    document.source_type = "general"
+
+    job_repository = MagicMock()
+    job_repository.get_by_id.return_value = job
+    document_repository = MagicMock()
+    document_repository.get_by_id.return_value = document
+
+    with patch(
+        "app.modules.ingestion.tasks.IngestionJobRepository",
+        return_value=job_repository,
+    ), patch(
+        "app.modules.ingestion.tasks.DocumentRepository",
+        return_value=document_repository,
+    ), patch(
+        "app.modules.ingestion.tasks.chunk_extraction_result",
+        return_value=[MagicMock(chunk_index=0)],
+    ), patch(
+        "app.modules.ingestion.tasks.create_embedding_provider",
+    ), patch(
+        "app.modules.ingestion.tasks.embed_content_chunks",
+        return_value=EmbeddingError(
+            message="Embedding generation failed after retry: provider timeout",
+            retryable=True,
+        ),
+    ), patch(
+        "app.modules.ingestion.tasks.UsageService",
+    ), patch.object(
+        process_ingestion_job,
+        "retry",
+        side_effect=Retry(message="retry"),
+    ) as mock_retry:
+        with pytest.raises(Retry):
+            process_ingestion_job(
+                str(job_id),
+                str(workspace_id),
+                str(document_id),
+            )
+
+    mock_retry.assert_called_once()
+    retry_kwargs = mock_retry.call_args.kwargs
+    assert retry_kwargs["max_retries"] == 3
+    assert retry_kwargs["countdown"] == 1
+    # Job stays processing — no terminal failed update yet.
+    assert job_repository.update.call_count == 1
+    assert job_repository.update.call_args.kwargs["status"] == IngestionJobStatus.PROCESSING
+
+
+@patch("app.modules.ingestion.tasks.create_storage_backend")
+@patch("app.modules.ingestion.tasks.get_settings")
+@patch("app.modules.ingestion.tasks.get_session_factory")
+def test_process_ingestion_job_fails_after_retry_exhaustion(
+    mock_session_factory,
+    mock_get_settings,
+    mock_create_storage_backend,
+    job_id,
+    workspace_id,
+    document_id,
+) -> None:
+    from celery.exceptions import MaxRetriesExceededError
+
+    from app.modules.ingestion.embeddings import EmbeddingError
+
+    session = MagicMock()
+    mock_session_factory.return_value = MagicMock(return_value=session)
+    mock_get_settings.return_value = MagicMock(
+        CHUNK_SIZE_TOKENS=1000,
+        CHUNK_OVERLAP_TOKENS=150,
+        EMBEDDING_BATCH_SIZE=64,
+        EMBEDDING_MODEL="text-embedding-3-small",
+    )
+    storage_backend = MagicMock()
+    storage_backend.get.return_value = (FIXTURES_DIR / "sample.txt").read_bytes()
+    mock_create_storage_backend.return_value = storage_backend
+
+    job = _build_job(
+        job_id=job_id,
+        workspace_id=workspace_id,
+        document_id=document_id,
+        attempt_count=3,
+    )
+    document = _build_document(document_id=document_id, workspace_id=workspace_id)
+    document.title = "Sample Text"
+    document.source_type = "general"
+
+    job_repository = MagicMock()
+    job_repository.get_by_id.return_value = job
+    document_repository = MagicMock()
+    document_repository.get_by_id.return_value = document
+
+    with patch(
+        "app.modules.ingestion.tasks.IngestionJobRepository",
+        return_value=job_repository,
+    ), patch(
+        "app.modules.ingestion.tasks.DocumentRepository",
+        return_value=document_repository,
+    ), patch(
+        "app.modules.ingestion.tasks.chunk_extraction_result",
+        return_value=[MagicMock(chunk_index=0)],
+    ), patch(
+        "app.modules.ingestion.tasks.create_embedding_provider",
+    ), patch(
+        "app.modules.ingestion.tasks.embed_content_chunks",
+        return_value=EmbeddingError(
+            message="Embedding generation failed after retry: provider timeout",
+            retryable=True,
+        ),
+    ), patch(
+        "app.modules.ingestion.tasks.UsageService",
+    ), patch.object(
+        process_ingestion_job,
+        "retry",
+        side_effect=MaxRetriesExceededError("exhausted"),
+    ):
+        process_ingestion_job(
+            str(job_id),
+            str(workspace_id),
+            str(document_id),
+        )
+
+    failure_updates = [
+        call.kwargs
+        for call in job_repository.update.call_args_list
+        if call.kwargs.get("status") == IngestionJobStatus.FAILED
+    ]
+    assert len(failure_updates) == 1
+    assert "provider timeout" in failure_updates[0]["error_message"]
+    document_repository.update_status.assert_any_call(
+        document=document,
+        status=DocumentStatus.FAILED,
+    )
+
+
+@patch("app.modules.ingestion.tasks.create_storage_backend")
+@patch("app.modules.ingestion.tasks.get_settings")
+@patch("app.modules.ingestion.tasks.get_session_factory")
+def test_process_ingestion_job_completes_after_transient_embedding_retry(
+    mock_session_factory,
+    mock_get_settings,
+    mock_create_storage_backend,
+    job_id,
+    workspace_id,
+    document_id,
+) -> None:
+    """AC: transient embedding timeout retries, then job completes."""
+    from celery.exceptions import Retry
+
+    from app.modules.ingestion.embeddings import EmbeddingError
+
+    session = MagicMock()
+    mock_session_factory.return_value = MagicMock(return_value=session)
+    mock_get_settings.return_value = MagicMock(
+        CHUNK_SIZE_TOKENS=1000,
+        CHUNK_OVERLAP_TOKENS=150,
+        EMBEDDING_BATCH_SIZE=64,
+        EMBEDDING_MODEL="text-embedding-3-small",
+    )
+    storage_backend = MagicMock()
+    storage_backend.get.return_value = (FIXTURES_DIR / "sample.txt").read_bytes()
+    mock_create_storage_backend.return_value = storage_backend
+
+    job = _build_job(job_id=job_id, workspace_id=workspace_id, document_id=document_id)
+    document = _build_document(document_id=document_id, workspace_id=workspace_id)
+    document.title = "Sample Text"
+    document.source_type = "general"
+
+    job_repository = MagicMock()
+    job_repository.get_by_id.return_value = job
+    document_repository = MagicMock()
+    document_repository.get_by_id.return_value = document
+
+    embed_outcomes = [
+        EmbeddingError(
+            message="Embedding generation failed after retry: provider timeout",
+            retryable=True,
+        ),
+        [MagicMock(chunk_index=0, embedding=[0.1])],
+    ]
+
+    with patch(
+        "app.modules.ingestion.tasks.IngestionJobRepository",
+        return_value=job_repository,
+    ), patch(
+        "app.modules.ingestion.tasks.DocumentRepository",
+        return_value=document_repository,
+    ), patch(
+        "app.modules.ingestion.tasks.chunk_extraction_result",
+        return_value=[MagicMock(chunk_index=0)],
+    ), patch(
+        "app.modules.ingestion.tasks.create_embedding_provider",
+    ), patch(
+        "app.modules.ingestion.tasks.embed_content_chunks",
+        side_effect=embed_outcomes,
+    ), patch(
+        "app.modules.ingestion.tasks.UsageService",
+    ), patch(
+        "app.modules.ingestion.tasks.persist_embedded_chunks",
+        return_value=1,
+    ), patch.object(
+        process_ingestion_job,
+        "retry",
+        side_effect=Retry(message="retry"),
+    ):
+        with pytest.raises(Retry):
+            process_ingestion_job(
+                str(job_id),
+                str(workspace_id),
+                str(document_id),
+            )
+
+        # Simulate Celery redelivering the same job after backoff.
+        job.status = IngestionJobStatus.PROCESSING
+        job.attempt_count = 1
+        process_ingestion_job(
+            str(job_id),
+            str(workspace_id),
+            str(document_id),
+        )
+
+    completed_updates = [
+        call.kwargs
+        for call in job_repository.update.call_args_list
+        if call.kwargs.get("status") == IngestionJobStatus.COMPLETED
+    ]
+    assert len(completed_updates) == 1
+    document_repository.update_status.assert_any_call(
+        document=document,
+        status=DocumentStatus.INDEXED,
+    )
+
+
+@patch("app.modules.ingestion.tasks.create_storage_backend")
+@patch("app.modules.ingestion.tasks.get_settings")
+@patch("app.modules.ingestion.tasks.get_session_factory")
+def test_process_ingestion_job_fails_permanently_on_no_extractable_text(
+    mock_session_factory,
+    mock_get_settings,
+    mock_create_storage_backend,
+    job_id,
+    workspace_id,
+    document_id,
+) -> None:
+    from app.modules.ingestion.extractors import ExtractionError
+
+    session = MagicMock()
+    mock_session_factory.return_value = MagicMock(return_value=session)
+    mock_get_settings.return_value = MagicMock(
+        CHUNK_SIZE_TOKENS=1000,
+        CHUNK_OVERLAP_TOKENS=150,
+        EMBEDDING_BATCH_SIZE=64,
+        EMBEDDING_MODEL="text-embedding-3-small",
+    )
+    storage_backend = MagicMock()
+    storage_backend.get.return_value = b"   "
+    mock_create_storage_backend.return_value = storage_backend
+
+    job = _build_job(job_id=job_id, workspace_id=workspace_id, document_id=document_id)
+    document = _build_document(document_id=document_id, workspace_id=workspace_id)
+    document.title = "Empty"
+    document.source_type = "general"
+
+    job_repository = MagicMock()
+    job_repository.get_by_id.return_value = job
+    document_repository = MagicMock()
+    document_repository.get_by_id.return_value = document
+
+    with patch(
+        "app.modules.ingestion.tasks.IngestionJobRepository",
+        return_value=job_repository,
+    ), patch(
+        "app.modules.ingestion.tasks.DocumentRepository",
+        return_value=document_repository,
+    ), patch(
+        "app.modules.ingestion.tasks.extract_document_text",
+        side_effect=ExtractionError("no extractable text"),
+    ), patch.object(
+        process_ingestion_job,
+        "retry",
+    ) as mock_retry:
+        process_ingestion_job(
+            str(job_id),
+            str(workspace_id),
+            str(document_id),
+        )
+
+    mock_retry.assert_not_called()
+    failure_update = job_repository.update.call_args_list[1].kwargs
+    assert failure_update["status"] == IngestionJobStatus.FAILED
+    assert failure_update["error_message"] == "no extractable text"
     document_repository.update_status.assert_any_call(
         document=document,
         status=DocumentStatus.FAILED,

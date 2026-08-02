@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 import structlog
+from celery.exceptions import MaxRetriesExceededError
 
 from app.infrastructure.celery_app import celery_app
 from app.infrastructure.config import get_settings
@@ -23,6 +24,11 @@ from app.modules.ingestion.extractors import (
 from app.modules.ingestion.job_repository import IngestionJobRepository
 from app.modules.ingestion.pipeline import truncate_error_message
 from app.modules.ingestion.repository import IngestionRepository
+from app.modules.ingestion.retry import (
+    INGESTION_MAX_RETRIES,
+    RetryableIngestionError,
+    retry_countdown_seconds,
+)
 from app.modules.observability.metrics import observe_ingestion_job
 from app.modules.usage.service import UsageService
 
@@ -62,8 +68,103 @@ def _fail_ingestion(
     )
 
 
-@celery_app.task(name="process_ingestion_job")
+def _fail_ingestion_by_ids(
+    *,
+    job_id: str,
+    workspace_id: str,
+    document_id: str,
+    error_message: str,
+) -> None:
+    """Mark job/document failed using a fresh session (post-retry exhaustion)."""
+    session = get_session_factory()()
+    try:
+        parsed_job_id = UUID(job_id)
+        parsed_workspace_id = UUID(workspace_id)
+        parsed_document_id = UUID(document_id)
+        job_repository = IngestionJobRepository(session)
+        document_repository = DocumentRepository(session)
+        job = job_repository.get_by_id(
+            workspace_id=parsed_workspace_id,
+            id=parsed_job_id,
+        )
+        document = document_repository.get_by_id(
+            workspace_id=parsed_workspace_id,
+            id=parsed_document_id,
+        )
+        if job is None or document is None:
+            logger.warning(
+                "ingestion_fail_after_retries_missing_rows",
+                job_id=job_id,
+                document_id=document_id,
+                workspace_id=workspace_id,
+            )
+            return
+        if job.status == IngestionJobStatus.COMPLETED:
+            return
+        _fail_ingestion(
+            job_repository=job_repository,
+            document_repository=document_repository,
+            job=job,
+            document=document,
+            error_message=error_message,
+            job_id=job_id,
+            document_id=document_id,
+            workspace_id=workspace_id,
+        )
+    finally:
+        session.close()
+
+
+def _request_retry_or_fail(
+    task,
+    *,
+    job_id: str,
+    workspace_id: str,
+    document_id: str,
+    error_message: str,
+) -> None:
+    """Ask Celery to retry a transient failure, or fail permanently when exhausted."""
+    countdown = retry_countdown_seconds(task.request.retries)
+    logger.warning(
+        "ingestion_job_retry_scheduled",
+        job_id=job_id,
+        document_id=document_id,
+        workspace_id=workspace_id,
+        error_message=truncate_error_message(error_message),
+        retries_so_far=task.request.retries,
+        countdown_seconds=countdown,
+        max_retries=INGESTION_MAX_RETRIES,
+    )
+    try:
+        raise task.retry(
+            exc=RetryableIngestionError(error_message),
+            countdown=countdown,
+            max_retries=INGESTION_MAX_RETRIES,
+        )
+    except MaxRetriesExceededError:
+        logger.error(
+            "ingestion_job_retries_exhausted",
+            job_id=job_id,
+            document_id=document_id,
+            workspace_id=workspace_id,
+            error_message=truncate_error_message(error_message),
+            max_retries=INGESTION_MAX_RETRIES,
+        )
+        _fail_ingestion_by_ids(
+            job_id=job_id,
+            workspace_id=workspace_id,
+            document_id=document_id,
+            error_message=error_message,
+        )
+
+
+@celery_app.task(
+    bind=True,
+    name="process_ingestion_job",
+    max_retries=INGESTION_MAX_RETRIES,
+)
 def process_ingestion_job(
+    self,
     job_id: str,
     workspace_id: str,
     document_id: str,
@@ -72,6 +173,7 @@ def process_ingestion_job(
     parsed_job_id = UUID(job_id)
     parsed_workspace_id = UUID(workspace_id)
     parsed_document_id = UUID(document_id)
+    retry_message: str | None = None
 
     session = get_session_factory()()
     try:
@@ -141,6 +243,8 @@ def process_ingestion_job(
             job_id=job_id,
             document_id=document_id,
             workspace_id=workspace_id,
+            attempt_count=job.attempt_count,
+            celery_retries=self.request.retries,
         )
 
         if not document.storage_key:
@@ -222,6 +326,7 @@ def process_ingestion_job(
                 content=file_content,
             )
         except ExtractionError as exc:
+            # Permanent: empty/unsupported/corrupt content — no Celery autoretry.
             _fail_ingestion(
                 job_repository=job_repository,
                 document_repository=document_repository,
@@ -273,69 +378,83 @@ def process_ingestion_job(
             embedding_model=settings.EMBEDDING_MODEL,
         )
         if isinstance(embedded_chunks, EmbeddingError):
-            _fail_ingestion(
-                job_repository=job_repository,
-                document_repository=document_repository,
-                job=job,
-                document=document,
-                error_message=embedded_chunks.message,
+            if embedded_chunks.retryable:
+                # Leave job in processing; schedule Celery retry after session close.
+                retry_message = embedded_chunks.message
+            else:
+                _fail_ingestion(
+                    job_repository=job_repository,
+                    document_repository=document_repository,
+                    job=job,
+                    document=document,
+                    error_message=embedded_chunks.message,
+                    job_id=job_id,
+                    document_id=document_id,
+                    workspace_id=workspace_id,
+                )
+        else:
+            logger.info(
+                "ingestion_embedding_completed",
                 job_id=job_id,
                 document_id=document_id,
                 workspace_id=workspace_id,
+                chunk_count=len(embedded_chunks),
             )
-            return
 
-        logger.info(
-            "ingestion_embedding_completed",
-            job_id=job_id,
-            document_id=document_id,
-            workspace_id=workspace_id,
-            chunk_count=len(embedded_chunks),
-        )
+            session.commit()
 
-        session.commit()
-
-        ingestion_repository = IngestionRepository(session)
-        storage_result = persist_embedded_chunks(
-            ingestion_repository=ingestion_repository,
-            embedded_chunks=embedded_chunks,
-            workspace_id=parsed_workspace_id,
-            document_id=parsed_document_id,
-        )
-        if isinstance(storage_result, ChunkStorageError):
-            _fail_ingestion(
-                job_repository=job_repository,
-                document_repository=document_repository,
-                job=job,
-                document=document,
-                error_message=storage_result.message,
-                job_id=job_id,
-                document_id=document_id,
-                workspace_id=workspace_id,
+            ingestion_repository = IngestionRepository(session)
+            storage_result = persist_embedded_chunks(
+                ingestion_repository=ingestion_repository,
+                embedded_chunks=embedded_chunks,
+                workspace_id=parsed_workspace_id,
+                document_id=parsed_document_id,
             )
-            return
+            if isinstance(storage_result, ChunkStorageError):
+                if storage_result.retryable:
+                    retry_message = storage_result.message
+                else:
+                    _fail_ingestion(
+                        job_repository=job_repository,
+                        document_repository=document_repository,
+                        job=job,
+                        document=document,
+                        error_message=storage_result.message,
+                        job_id=job_id,
+                        document_id=document_id,
+                        workspace_id=workspace_id,
+                    )
+            else:
+                completed_at = datetime.now(UTC)
+                job_repository.update(
+                    job=job,
+                    status=IngestionJobStatus.COMPLETED,
+                    completed_at=completed_at,
+                )
+                observe_ingestion_job(status=IngestionJobStatus.COMPLETED.value)
+                document_repository.update_status(
+                    document=document,
+                    status=DocumentStatus.INDEXED,
+                )
 
-        completed_at = datetime.now(UTC)
-        job_repository.update(
-            job=job,
-            status=IngestionJobStatus.COMPLETED,
-            completed_at=completed_at,
-        )
-        observe_ingestion_job(status=IngestionJobStatus.COMPLETED.value)
-        document_repository.update_status(
-            document=document,
-            status=DocumentStatus.INDEXED,
-        )
-
-        logger.info(
-            "ingestion_storage_completed",
-            job_id=job_id,
-            document_id=document_id,
-            workspace_id=workspace_id,
-            chunk_count=storage_result,
-        )
+                logger.info(
+                    "ingestion_storage_completed",
+                    job_id=job_id,
+                    document_id=document_id,
+                    workspace_id=workspace_id,
+                    chunk_count=storage_result,
+                )
     except Exception:
         session.rollback()
         raise
     finally:
         session.close()
+
+    if retry_message is not None:
+        _request_retry_or_fail(
+            self,
+            job_id=job_id,
+            workspace_id=workspace_id,
+            document_id=document_id,
+            error_message=retry_message,
+        )

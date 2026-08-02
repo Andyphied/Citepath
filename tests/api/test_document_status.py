@@ -227,7 +227,10 @@ def test_upload_ingestion_failure_exposes_failed_status_labels(
         return_value=[content_chunk],
     ), patch(
         "app.modules.ingestion.tasks.embed_content_chunks",
-        return_value=EmbeddingError(message="provider timeout"),
+        return_value=EmbeddingError(
+            message="Embedding provider returned 0 vectors for 1 texts",
+            retryable=False,
+        ),
     ):
         upload_response = client.post(
             f"/workspaces/{workspace['id']}/documents",

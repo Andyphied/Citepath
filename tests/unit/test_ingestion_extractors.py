@@ -56,7 +56,7 @@ def test_extract_json_rejects_invalid_json() -> None:
 
 
 def test_extract_text_rejects_empty_content() -> None:
-    with pytest.raises(ExtractionError, match="empty"):
+    with pytest.raises(ExtractionError, match="no extractable text"):
         extract_document_text(file_type="txt", content=b"   \n\t  ")
 
 

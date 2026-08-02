@@ -20,10 +20,14 @@ class MockEmbeddingProvider:
         vector_dim: int = 4,
         embedding_tokens: int = 10,
         fail_times: int = 0,
+        fail_exception: Exception | None = None,
     ) -> None:
         self.vector_dim = vector_dim
         self.embedding_tokens = embedding_tokens
         self.fail_times = fail_times
+        self.fail_exception = fail_exception or RuntimeError(
+            "embedding provider unavailable"
+        )
         self.calls: list[list[str]] = []
 
     @property
@@ -34,7 +38,7 @@ class MockEmbeddingProvider:
         self.calls.append(texts)
         if self.fail_times > 0:
             self.fail_times -= 1
-            raise RuntimeError("embedding provider unavailable")
+            raise self.fail_exception
 
         vectors = [[float(index)] * self.vector_dim for index in range(len(texts))]
         return EmbeddingResult(
@@ -205,6 +209,7 @@ def test_embed_content_chunks_fails_after_retry_exhausted(
 
     assert isinstance(result, EmbeddingError)
     assert "after retry" in result.message
+    assert result.retryable is False
     assert len(provider.calls) == 2
 
     failure_event = usage_service.log_event.call_args.args[0]
@@ -213,6 +218,34 @@ def test_embed_content_chunks_fails_after_retry_exhausted(
     assert failure_event.user_id is None
     assert failure_event.metadata["document_id"] == str(document_id)
     assert failure_event.metadata["job_id"] == str(job_id)
+
+
+def test_embed_content_chunks_marks_timeout_as_retryable(
+    workspace_id,
+    document_id,
+    job_id,
+) -> None:
+    chunks = [_make_chunk(0)]
+    provider = MockEmbeddingProvider(
+        fail_times=2,
+        fail_exception=TimeoutError("provider timeout"),
+    )
+    usage_service = MagicMock()
+
+    result = embed_content_chunks(
+        chunks=chunks,
+        embedding_provider=provider,
+        usage_service=usage_service,
+        workspace_id=workspace_id,
+        document_id=document_id,
+        job_id=job_id,
+        batch_size=64,
+        embedding_model="text-embedding-3-small",
+    )
+
+    assert isinstance(result, EmbeddingError)
+    assert result.retryable is True
+    assert "timeout" in result.message.lower()
 
 
 def test_embed_content_chunks_empty_input(workspace_id, document_id, job_id) -> None:

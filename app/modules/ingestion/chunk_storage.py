@@ -7,6 +7,7 @@ import structlog
 
 from app.modules.ingestion.chunker import EmbeddedChunk
 from app.modules.ingestion.repository import IngestionRepository
+from app.modules.ingestion.retry import is_retryable_exception
 
 logger = structlog.get_logger(__name__)
 
@@ -16,6 +17,7 @@ class ChunkStorageError:
     """Chunk persistence failed."""
 
     message: str
+    retryable: bool = False
 
 
 def persist_embedded_chunks(
@@ -40,4 +42,7 @@ def persist_embedded_chunks(
             document_id=str(document_id),
             chunk_count=len(embedded_chunks),
         )
-        return ChunkStorageError(message=str(exc))
+        return ChunkStorageError(
+            message=str(exc),
+            retryable=is_retryable_exception(exc),
+        )

@@ -12,6 +12,6 @@ def extract_text_content(content: bytes) -> ExtractionResult:
         raise ExtractionError("File is not valid UTF-8 text") from exc
 
     if not text.strip():
-        raise ExtractionError("Extracted text is empty")
+        raise ExtractionError("no extractable text")
 
     return ExtractionResult(segments=[ExtractedSegment(text=text, metadata={})])

@@ -10,6 +10,7 @@ import structlog
 from app.infrastructure.db.enums import UsageEventStatus, UsageOperation
 from app.infrastructure.llm.embedding import EmbeddingProvider
 from app.modules.ingestion.chunker import ContentChunk, EmbeddedChunk
+from app.modules.ingestion.retry import is_retryable_exception
 from app.modules.usage.service import UsageEventInput, UsageService
 
 logger = structlog.get_logger(__name__)
@@ -20,6 +21,7 @@ class EmbeddingError:
     """Embedding batch failure surfaced to the ingestion worker."""
 
     message: str
+    retryable: bool = False
 
 
 def _log_embedding_usage(
@@ -69,7 +71,8 @@ def _embed_batch_with_retry(
                     message=(
                         "Embedding provider returned "
                         f"{len(result.vectors)} vectors for {len(texts)} texts"
-                    )
+                    ),
+                    retryable=False,
                 )
             return (
                 result.vectors,
@@ -93,7 +96,8 @@ def _embed_batch_with_retry(
         if last_error is not None
         else "Embedding generation failed after retry"
     )
-    return EmbeddingError(message=message)
+    retryable = is_retryable_exception(last_error) if last_error is not None else False
+    return EmbeddingError(message=message, retryable=retryable)
 
 
 def embed_content_chunks(
