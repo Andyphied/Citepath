@@ -11,16 +11,19 @@ REST API for AtlasOps AI MVP. Base URL: `/api/v1`. All workspace-scoped routes r
   "error": {
     "code": "forbidden",
     "message": "You do not have permission to perform this action",
-    "details": {}
+    "details": {},
+    "request_id": "uuid"
   }
 }
 ```
 
 HTTP status: `400`, `401`, `403`, `404`, `409`, `422`, `429`, `500`.
 
+Auth-related codes: `invalid_credentials`, `token_expired`, `token_invalid`, `unauthorized` (plus `duplicate_email`, `validation_error`, `rate_limited` on auth routes). Schema owner: OBS-004 shared `error_response()`.
+
 ### Request ID
 
-Client may send `X-Request-ID`; server generates UUID if absent. Returned in response header and logs.
+Client may send `X-Request-ID`; server generates UUID if absent. Returned in response header, error JSON `request_id`, and logs.
 
 ### Pagination
 
@@ -72,7 +75,7 @@ Every `{workspace_id}` route validates membership before handler execution. Reso
 | **Purpose** | Current user profile |
 | **Role** | Authenticated |
 | **Response 200** | `{ "id", "email", "name", "created_at" }` |
-| **Errors** | `401` |
+| **Errors** | `401 unauthorized`, `401 token_expired`, `401 token_invalid` |
 
 ---
 
