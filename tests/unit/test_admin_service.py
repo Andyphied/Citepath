@@ -100,6 +100,11 @@ def test_list_ingestion_jobs_includes_document_title(monkeypatch) -> None:
         "list_for_workspace_paginated",
         lambda **_: ([(job, "incident.md")], 1),
     )
+    monkeypatch.setattr(
+        service._ingestion_jobs,
+        "count_by_status",
+        lambda **_: 3,
+    )
     result = service.list_ingestion_jobs(
         workspace_id=workspace_id,
         page=1,
@@ -110,3 +115,44 @@ def test_list_ingestion_jobs_includes_document_title(monkeypatch) -> None:
     assert result.items[0].document_title == "incident.md"
     assert result.items[0].error_message == "parse error"
     assert result.items[0].status == "failed"
+    assert result.pending_count == 3
+
+
+def test_list_ingestion_jobs_sanitizes_error_message(monkeypatch) -> None:
+    """Defense-in-depth: admin serialization re-sanitizes persisted errors."""
+    workspace_id = uuid4()
+    document_id = uuid4()
+    now = datetime.now(UTC)
+    path_bearing = (
+        f"Storage object not found: /var/data/{workspace_id}/{document_id}/file.pdf"
+    )
+    job = IngestionJob(
+        id=uuid4(),
+        workspace_id=workspace_id,
+        document_id=document_id,
+        status=IngestionJobStatus.FAILED,
+        attempt_count=1,
+        error_message=path_bearing,
+        started_at=now,
+        completed_at=now,
+        created_at=now,
+    )
+    service = AdminService(MagicMock())
+    monkeypatch.setattr(
+        service._ingestion_jobs,
+        "list_for_workspace_paginated",
+        lambda **_: ([(job, "file.pdf")], 1),
+    )
+    monkeypatch.setattr(
+        service._ingestion_jobs,
+        "count_by_status",
+        lambda **_: 0,
+    )
+    result = service.list_ingestion_jobs(
+        workspace_id=workspace_id,
+        page=1,
+        page_size=20,
+        status=IngestionJobStatus.FAILED,
+    )
+    assert result.items[0].error_message == "Stored file could not be read"
+    assert "/var/data" not in (result.items[0].error_message or "")

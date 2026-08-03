@@ -30,6 +30,10 @@ def test_health_ready_returns_200_when_dependencies_healthy(
             "app.infrastructure.health_checks.check_redis",
             return_value=True,
         ),
+        patch(
+            "app.infrastructure.health_checks.get_celery_queue_depth",
+            return_value=4,
+        ),
     ):
         response = client.get("/health/ready")
 
@@ -38,6 +42,8 @@ def test_health_ready_returns_200_when_dependencies_healthy(
         "status": "ok",
         "database": "ok",
         "redis": "ok",
+        "queue_depth": 4,
+        "worker": {"status": "ok", "queue_depth": 4},
     }
 
 
@@ -55,15 +61,20 @@ def test_health_ready_returns_503_when_database_unreachable(
             "app.infrastructure.health_checks.check_redis",
             return_value=True,
         ),
+        patch(
+            "app.infrastructure.health_checks.get_celery_queue_depth",
+            return_value=0,
+        ),
     ):
         response = client.get("/health/ready")
 
     assert response.status_code == 503
-    assert response.json() == {
-        "status": "error",
-        "database": "error",
-        "redis": "ok",
-    }
+    body = response.json()
+    assert body["status"] == "error"
+    assert body["database"] == "error"
+    assert body["redis"] == "ok"
+    assert body["queue_depth"] == 0
+    assert body["worker"]["status"] == "ok"
 
 
 def test_health_ready_returns_503_when_redis_unreachable(
@@ -88,4 +99,6 @@ def test_health_ready_returns_503_when_redis_unreachable(
         "status": "error",
         "database": "ok",
         "redis": "error",
+        "queue_depth": 0,
+        "worker": {"status": "error", "queue_depth": 0},
     }

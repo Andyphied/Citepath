@@ -52,24 +52,39 @@ Internal errors log full exception with stack; client receives generic `500 inte
 
 Standard codes: `invalid_credentials`, `token_expired`, `token_invalid`, `unauthorized`, `forbidden`, `not_found`, `conflict`, `validation_error`, `rate_limited`, `internal_error`.
 
-## Health Checks (OBS-001)
+## Health Checks (OBS-001 / OBS-007)
 
-`GET /health`:
+`GET /health` (liveness):
+
+```json
+{ "status": "ok" }
+```
+
+`GET /health/ready` (readiness + worker queue visibility):
 
 ```json
 {
   "status": "ok",
-  "version": "0.1.0",
-  "checks": {
-    "database": { "status": "ok", "latency_ms": 5 },
-    "redis": { "status": "ok" },
-    "storage": { "status": "ok" },
-    "worker": { "status": "ok", "pending_jobs": 2 }
-  }
+  "database": "ok",
+  "redis": "ok",
+  "queue_depth": 2,
+  "worker": { "status": "ok", "queue_depth": 2 }
 }
 ```
 
-Return `503` if database unreachable. Worker check: ping Redis + optional Celery inspect.
+Return `503` if database or Redis unreachable. `queue_depth` is the Redis `LLEN` of `CELERY_DEFAULT_QUEUE` (default `celery`).
+
+**Semantics (OBS-007):**
+
+| Field | Meaning |
+|-------|---------|
+| `worker.status` | Redis Celery queue probe succeeded (`ok`) or failed (`error`). **Not** Celery worker process liveness. |
+| `queue_depth` | Broker list length when the probe succeeds. On probe failure, value is coerced to `0` while `worker.status=error` (sentinel). True empty queue is `queue_depth: 0` **and** `worker.status=ok`. |
+| Process liveness | Structured `worker_heartbeat` logs every `WORKER_HEARTBEAT_INTERVAL_SECONDS` (default 300), plus observing `queue_depth` drain under load. |
+
+Admin pending job counts are on `GET .../admin/ingestion-jobs` as `pending_count` (DB-backed; distinct from Redis queue depth).
+
+Local operators: compose passes both env vars into `api`/`worker` (see README). Optional Flower UI: `docker compose --profile flower up` → http://localhost:5555 (dev only; binds host without auth — local use only).
 
 ## Ingestion Job Visibility
 
@@ -108,28 +123,29 @@ Prometheus-compatible `GET /metrics` (text exposition format via `prometheus_cli
 
 **Auth / exposure:** Unauthenticated for MVP scraper simplicity. Treat as an internal endpoint — restrict at the network edge (Compose/VPC/firewall). Do not put tenant identifiers in metric labels.
 
-**MVP counters (shipped):**
+**MVP counters / histograms (shipped):**
 
 | Metric | Type | Labels |
 |--------|------|--------|
 | `http_requests_total` | counter | `method`, `path_template`, `status` |
 | `http_errors_total` | counter | `method`, `path_template`, `status` (≥400) |
 | `ingestion_jobs_total` | counter | `status` (`pending` / `processing` / `completed` / `failed`) |
+| `ingestion_failures_total` | counter | `error_type` (bounded: `validation`, `storage_read`, `extraction`, `embedding`, `chunk_storage`, `retries_exhausted`, `unknown`) |
+| `ingestion_duration_seconds` | histogram | `status` (`completed` / `failed`) |
 | `llm_calls_total` | counter | `operation`, `status` |
 
 - HTTP counters are recorded by `MetricsMiddleware` using route path templates (not raw IDs) to limit cardinality.
 - `GET /metrics` itself is excluded from HTTP counters (avoids scrape feedback).
 - `ingestion_jobs_total` increments on job create (API process) and status transitions in the worker.
+- Terminal ingestion failures also increment `ingestion_failures_total` and observe `ingestion_duration_seconds` (OBS-005).
 - `llm_calls_total` increments in `UsageService.log_event` (API and worker processes).
 - Worker-side increments live in the worker process memory; the API scrape shows API-process counters only unless a shared/multiprocess collector is added later.
 
-**Deferred (histograms / richer series — P2+):**
+**Deferred (richer series — P2+):**
 
 | Metric | Type | Labels |
 |--------|------|--------|
 | `http_request_duration_seconds` | histogram | `method`, `path_template` |
-| `ingestion_job_duration_seconds` | histogram | `status` |
-| `ingestion_failures_total` | counter | `error_type` |
 | `rag_query_duration_seconds` | histogram | `insufficient_context` |
 | `llm_request_duration_seconds` | histogram | `provider`, `operation` |
 | `llm_tokens_total` | counter | avoid `workspace_id` on public scrapes |
@@ -145,7 +161,7 @@ Use path templates (`/workspaces/{workspace_id}/query`) not raw paths to limit c
 All of the following must be derivable (Prometheus and/or logs / admin APIs):
 
 - API request count, latency (`duration_ms` logs today; histogram deferred), error rate
-- Ingestion job duration and failure count (counts via `ingestion_jobs_total`; duration histogram deferred)
+- Ingestion job duration and failure count (`ingestion_duration_seconds`, `ingestion_failures_total`, plus `ingestion_jobs_total`)
 - RAG query latency (structured logs / future histogram)
 - LLM provider latency (usage events + logs / future histogram)
 - Token usage by workspace (admin usage API)

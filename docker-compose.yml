@@ -1,7 +1,10 @@
 # AtlasOps AI local stack — API, worker, web UI, PostgreSQL (pgvector), Redis.
 # Fresh clone: docker compose up --build
 # Web UI: http://localhost:3000  API: http://localhost:8000
+# Optional Flower (local Celery UI): docker compose --profile flower up --build
 # Optional: cp .env.example .env to override defaults for host-native tools.
+# Operator overrides (compose interpolates from shell / .env):
+#   WORKER_HEARTBEAT_INTERVAL_SECONDS  CELERY_DEFAULT_QUEUE
 
 x-app-environment: &app-environment
   DATABASE_URL: postgresql+psycopg2://atlasops:atlasops@postgres:5432/atlasops
@@ -13,6 +16,9 @@ x-app-environment: &app-environment
   OPENAI_API_KEY: sk-dev-placeholder-not-used-locally
   ENVIRONMENT: development
   LOG_LEVEL: INFO
+  # OBS-007: worker structured heartbeat + Redis LLEN key for /health/ready.queue_depth
+  WORKER_HEARTBEAT_INTERVAL_SECONDS: ${WORKER_HEARTBEAT_INTERVAL_SECONDS:-300}
+  CELERY_DEFAULT_QUEUE: ${CELERY_DEFAULT_QUEUE:-celery}
 
 services:
   postgres:
@@ -85,6 +91,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    # Concurrency 2 matches ADR-004 / ECS worker command. Heartbeat uses WORKER_*.
     command: celery -A app.infrastructure.celery_app worker -l info -c 2
     environment:
       <<: *app-environment
@@ -98,6 +105,21 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+
+  # Optional local Celery debug UI (OBS-007). Not used in production.
+  # Enable: docker compose --profile flower up
+  # Binds host :5555 without Flower auth — local/dev only; do not expose publicly.
+  flower:
+    profiles: ["flower"]
+    image: mher/flower:2.0
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/0
+      FLOWER_PORT: "5555"
+    ports:
+      - "5555:5555"
+    depends_on:
+      redis:
+        condition: service_healthy
 
   # Next.js demo UI (UI-001). Browser calls API via host port 8000.
   # Local host-native alternative: cd web && npm ci && npm run dev

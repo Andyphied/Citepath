@@ -125,6 +125,23 @@ class IngestionJobRepository(WorkspaceScopedRepository[IngestionJob]):
         )
         return int(total or 0)
 
+    def count_by_status(
+        self,
+        *,
+        workspace_id: UUID,
+        status: IngestionJobStatus,
+    ) -> int:
+        """Count ingestion jobs in a workspace with the given status."""
+        total = self._session.scalar(
+            select(func.count())
+            .select_from(IngestionJob)
+            .where(
+                IngestionJob.workspace_id == workspace_id,
+                IngestionJob.status == status,
+            )
+        )
+        return int(total or 0)
+
     def update(
         self,
         *,

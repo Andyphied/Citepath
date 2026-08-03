@@ -16,6 +16,8 @@ def create_celery_app() -> Celery:
         task_time_limit=600,
         result_backend=None,
         task_always_eager=False,
+        # Keep broker queue name aligned with /health/ready Redis LLEN probe (OBS-007).
+        task_default_queue=settings.CELERY_DEFAULT_QUEUE,
     )
     return app
 

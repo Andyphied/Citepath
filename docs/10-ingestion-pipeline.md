@@ -119,13 +119,13 @@ Classification (`app/modules/ingestion/retry.py`):
 
 While auto-retrying, job/document remain `processing`. On retry exhaustion, both become `failed` with the last error message.
 
-## Failure Status
+## Failure Status (OBS-005)
 
-- `ingestion_jobs.status = failed`
-- `documents.status = failed`
-- `error_message` visible in admin ingestion jobs view
-- Metric: `ingestion_failures_total` incremented
-- OBS-005: structured error log with `job_id`, `document_id`, `workspace_id`
+- `ingestion_jobs.status = failed` and `documents.status = failed` updated in a **single DB commit**
+- Persisted `error_message` is truncated and sanitized (no storage paths); full message + stack in logs
+- Structured log `ingestion_job_failed` includes `job_id`, `document_id`, `workspace_id`, `error_type`, `error_message`, and exception stack (`exc_info` / `stack_info`)
+- Metrics: `ingestion_failures_total{error_type}` and `ingestion_duration_seconds{status="failed"}` (plus existing `ingestion_jobs_total{status="failed"}`)
+- Storage read I/O: permanent (`FileNotFoundError` / `ValueError`) fails immediately; retryable timeouts/connection errors use Celery retry (ING-007)
 
 ## Reindexing Behavior (DOC-006)
 
@@ -148,13 +148,18 @@ Celery worker process runs:
 - `process_ingestion_job(job_id: UUID)`
 - Does **not** handle HTTP, RAG, or agent requests
 
-Worker health: consumer heartbeat logged; `/health` checks Redis queue connectivity.
+Worker health: structured `worker_heartbeat` logs indicate process liveness; `/health/ready` probes Redis Celery queue connectivity (not Celery process liveness). Confirm drain by watching `queue_depth` decrease under load.
 
 ## Worker Visibility (OBS-007)
 
-- Log job start/complete/fail with duration
-- Admin endpoint shows pending/processing/failed counts
-- Optional: Celery inspect for active tasks in health check
+- Structured `worker_heartbeat` log every `WORKER_HEARTBEAT_INTERVAL_SECONDS` (default 300) — process liveness signal
+- `GET /health/ready` includes Redis Celery `queue_depth` and `worker.status`
+  - `worker.status=ok` means the Redis queue probe (`LLEN`) succeeded — **not** that a Celery worker process is alive
+  - Process liveness: `worker_heartbeat` logs + observing `queue_depth` drain while jobs are enqueued
+  - `queue_depth: 0` with `worker.status=ok` means an empty queue; when the probe fails, `queue_depth` is coerced to `0` and `worker.status=error` (sentinel — do not treat as empty)
+- `GET .../admin/ingestion-jobs` includes workspace `pending_count` (DB pending jobs)
+- Job start/complete/fail logs include `duration_seconds` where applicable
+- Local ops: compose wires `WORKER_HEARTBEAT_INTERVAL_SECONDS` / `CELERY_DEFAULT_QUEUE`; optional Flower via `docker compose --profile flower up` (not for prod)
 
 ## Usage on Failure
 

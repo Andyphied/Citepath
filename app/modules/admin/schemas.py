@@ -51,12 +51,15 @@ class AdminIngestionJobItem(BaseModel):
 
 
 class AdminIngestionJobListResponse(BaseModel):
-    """Paginated ingestion jobs for admin (ADMIN-002)."""
+    """Paginated ingestion jobs for admin (ADMIN-002 / OBS-007)."""
 
     items: list[AdminIngestionJobItem]
     total: int
     page: int
     page_size: int
+    pending_count: int = Field(
+        description="Workspace count of ingestion jobs currently pending (OBS-007).",
+    )
 
 
 class RecentQuestionItem(BaseModel):

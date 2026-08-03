@@ -74,11 +74,13 @@ Source: [diagrams/deployment-diagram.mmd](./diagrams/deployment-diagram.mmd)
 | `api` | Build `Dockerfile` | 8000 |
 | `worker` | Same image, `celery worker` | — |
 | `web` | Next.js (`web/` Dockerfile) | 3000 |
+| `flower` | `mher/flower:2.0` (profile `flower`) | 5555 |
 
 Volumes: `postgres_data`, `uploads_data`.
 
 Commands:
 - `docker compose up` — full stack
+- `docker compose --profile flower up` — stack + optional Flower (local Celery UI; not for prod)
 - `alembic upgrade head` — migrations via api container or init script
 - `python -m scripts.seed_demo` — Northstar Cloud dataset
 
@@ -117,6 +119,8 @@ Commands:
 | `MAX_UPLOAD_BYTES` | No | Default 20971520 |
 | `LOG_LEVEL` | No | Default `INFO` |
 | `ENVIRONMENT` | No | `development`, `staging`, `production` |
+| `WORKER_HEARTBEAT_INTERVAL_SECONDS` | No | Celery worker heartbeat log interval (default `300`) |
+| `CELERY_DEFAULT_QUEUE` | No | Celery queue name / Redis list key for readiness `queue_depth` (default `celery`) |
 
 ## Secrets
 
@@ -143,7 +147,9 @@ Commands:
 
 - Celery broker: Redis DB 0
 - Result backend: disabled (use DB job status)
+- Default queue name `celery` (`CELERY_DEFAULT_QUEUE`); API readiness probes depth via Redis `LLEN` on that key
 - ElastiCache in same VPC as ECS tasks; security group allows 6379 from ECS only
+- Flower is optional for local compose (`--profile flower`); do not deploy Flower in MVP prod
 
 ## Worker Deployment
 

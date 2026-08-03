@@ -83,6 +83,20 @@ class Settings(BaseSettings):
     )
     LOG_LEVEL: str = Field(default="INFO")
     ENVIRONMENT: Environment = Field(default=Environment.DEVELOPMENT)
+    WORKER_HEARTBEAT_INTERVAL_SECONDS: int = Field(
+        default=300,
+        ge=30,
+        le=3600,
+        description=(
+            "Celery worker structured heartbeat interval in seconds "
+            "(OBS-007; default 5 minutes)"
+        ),
+    )
+    CELERY_DEFAULT_QUEUE: str = Field(
+        default="celery",
+        min_length=1,
+        description="Redis list key / Celery queue name for queue depth checks",
+    )
     STORAGE_PATH: str = Field(
         default="/uploads",
         description="Local filesystem path when STORAGE_BACKEND=local",

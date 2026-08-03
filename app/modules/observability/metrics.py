@@ -1,8 +1,8 @@
-"""Prometheus metrics registry and helpers (OBS-006)."""
+"""Prometheus metrics registry and helpers (OBS-006 / OBS-005)."""
 
 from __future__ import annotations
 
-from prometheus_client import CONTENT_TYPE_LATEST, Counter, generate_latest
+from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
 
 HTTP_REQUESTS_TOTAL = Counter(
     "http_requests_total",
@@ -22,10 +22,36 @@ INGESTION_JOBS_TOTAL = Counter(
     ["status"],
 )
 
+INGESTION_FAILURES_TOTAL = Counter(
+    "ingestion_failures_total",
+    "Total terminal ingestion job failures",
+    ["error_type"],
+)
+
+INGESTION_DURATION_SECONDS = Histogram(
+    "ingestion_duration_seconds",
+    "Ingestion job attempt duration in seconds",
+    ["status"],
+    buckets=(0.5, 1.0, 2.5, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0, 600.0),
+)
+
 LLM_CALLS_TOTAL = Counter(
     "llm_calls_total",
     "Total LLM and embedding provider calls",
     ["operation", "status"],
+)
+
+# Low-cardinality error_type allowlist for ingestion_failures_total.
+_ALLOWED_INGESTION_ERROR_TYPES = frozenset(
+    {
+        "validation",
+        "storage_read",
+        "extraction",
+        "embedding",
+        "chunk_storage",
+        "retries_exhausted",
+        "unknown",
+    }
 )
 
 METRICS_CONTENT_TYPE = CONTENT_TYPE_LATEST
@@ -93,6 +119,27 @@ def observe_http_request(
 def observe_ingestion_job(*, status: str) -> None:
     """Increment ingestion job counter for a status transition."""
     INGESTION_JOBS_TOTAL.labels(status=status).inc()
+
+
+def normalize_ingestion_error_type(error_type: str) -> str:
+    """Map failure class to a bounded Prometheus label."""
+    if error_type in _ALLOWED_INGESTION_ERROR_TYPES:
+        return error_type
+    return "unknown"
+
+
+def observe_ingestion_failure(*, error_type: str) -> None:
+    """Increment terminal ingestion failure counter."""
+    INGESTION_FAILURES_TOTAL.labels(
+        error_type=normalize_ingestion_error_type(error_type),
+    ).inc()
+
+
+def observe_ingestion_duration(*, status: str, seconds: float) -> None:
+    """Observe ingestion attempt duration for a terminal status."""
+    if seconds < 0:
+        return
+    INGESTION_DURATION_SECONDS.labels(status=status).observe(seconds)
 
 
 def observe_llm_call(*, operation: str, status: str) -> None:

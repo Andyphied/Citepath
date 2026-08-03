@@ -12,6 +12,24 @@ API: http://localhost:8000
 Health: http://localhost:8000/health/ready  
 Web UI: http://localhost:3000 (Next.js app shell — see `web/README.md`)
 
+### Worker visibility (OBS-007)
+
+Compose wires these into `api` and `worker` (override via shell or `.env`):
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `WORKER_HEARTBEAT_INTERVAL_SECONDS` | `300` | Structured `worker_heartbeat` log interval |
+| `CELERY_DEFAULT_QUEUE` | `celery` | Celery queue name and Redis `LLEN` key for `/health/ready.queue_depth` |
+
+```bash
+# Faster local heartbeats while debugging
+WORKER_HEARTBEAT_INTERVAL_SECONDS=60 docker compose up --build
+```
+
+Confirm the worker is alive: `docker compose logs -f worker | grep worker_heartbeat`  
+Queue depth: `curl -s http://localhost:8000/health/ready | jq .queue_depth`  
+Optional Flower (local only, no auth on host :5555): `docker compose --profile flower up` → http://localhost:5555
+
 Local web dev (without rebuilding the `web` image):
 
 ```bash

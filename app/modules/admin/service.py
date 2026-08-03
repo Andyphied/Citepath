@@ -11,14 +11,15 @@ from app.infrastructure.db.enums import DocumentStatus, IngestionJobStatus
 from app.modules.admin.schemas import (
     AdminIngestionJobItem,
     AdminIngestionJobListResponse,
-    DocumentStatusCounts,
     DocumentsOverviewResponse,
+    DocumentStatusCounts,
     FailedJobsWidgetResponse,
     RecentDocumentUpload,
     RecentQuestionItem,
     RecentQuestionsResponse,
 )
 from app.modules.documents.repository import DocumentRepository
+from app.modules.documents.sanitization import sanitize_ingestion_error_message
 from app.modules.ingestion.job_repository import IngestionJobRepository
 from app.modules.ingestion.models import IngestionJob
 from app.modules.rag.repository import RAGRepository
@@ -98,6 +99,10 @@ class AdminService:
             page_size=page_size,
             status=status,
         )
+        pending_count = self._ingestion_jobs.count_by_status(
+            workspace_id=workspace_id,
+            status=IngestionJobStatus.PENDING,
+        )
         return AdminIngestionJobListResponse(
             items=[
                 _job_item(job=job, document_title=title) for job, title in rows
@@ -105,6 +110,7 @@ class AdminService:
             total=total,
             page=page,
             page_size=page_size,
+            pending_count=pending_count,
         )
 
     def list_recent_questions(
@@ -184,7 +190,7 @@ def _job_item(*, job: IngestionJob, document_title: str | None) -> AdminIngestio
         document_title=document_title,
         status=status,
         attempt_count=job.attempt_count,
-        error_message=job.error_message,
+        error_message=sanitize_ingestion_error_message(job.error_message),
         started_at=job.started_at,
         completed_at=job.completed_at,
         created_at=job.created_at,

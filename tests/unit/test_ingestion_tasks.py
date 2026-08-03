@@ -13,6 +13,22 @@ from app.modules.ingestion.tasks import process_ingestion_job
 FIXTURES_DIR = Path(__file__).resolve().parents[1] / "fixtures" / "documents"
 
 
+def _assert_terminal_failure(
+    *,
+    job,
+    document,
+    session,
+    error_substring: str | None = None,
+) -> None:
+    """OBS-005: job + document failed via single session commit."""
+    assert job.status == IngestionJobStatus.FAILED
+    assert document.status == DocumentStatus.FAILED
+    assert job.completed_at is not None
+    if error_substring is not None:
+        assert error_substring in (job.error_message or "")
+    session.commit.assert_called()
+
+
 @pytest.fixture
 def workspace_id():
     return uuid4()
@@ -42,6 +58,9 @@ def _build_job(
     job.document_id = document_id
     job.status = status
     job.attempt_count = attempt_count
+    job.started_at = None
+    job.completed_at = None
+    job.error_message = None
     return job
 
 
@@ -251,21 +270,18 @@ def test_process_ingestion_job_fails_on_corrupt_pdf(
             str(document_id),
         )
 
-    assert job_repository.update.call_count == 2
-    failure_update = job_repository.update.call_args_list[1].kwargs
-    assert failure_update["status"] == IngestionJobStatus.FAILED
-    assert failure_update["error_message"] is not None
-    assert "Failed to read PDF" in failure_update["error_message"]
-    assert isinstance(failure_update["completed_at"], datetime)
-
+    assert job_repository.update.call_count == 1
     document_repository.update_status.assert_any_call(
         document=document,
         status=DocumentStatus.PROCESSING,
     )
-    document_repository.update_status.assert_any_call(
+    _assert_terminal_failure(
+        job=job,
         document=document,
-        status=DocumentStatus.FAILED,
+        session=session,
+        error_substring="Failed to read PDF",
     )
+    assert isinstance(job.completed_at, datetime)
 
 
 @patch("app.modules.ingestion.tasks.get_session_factory")
@@ -387,10 +403,13 @@ def test_process_ingestion_job_fails_on_storage_key_prefix_mismatch(
             str(document_id),
         )
 
-    assert job_repository.update.call_count == 2
-    failure_update = job_repository.update.call_args_list[1].kwargs
-    assert failure_update["status"] == IngestionJobStatus.FAILED
-    assert "Storage key does not match" in failure_update["error_message"]
+    assert job_repository.update.call_count == 1
+    _assert_terminal_failure(
+        job=job,
+        document=document,
+        session=session,
+        error_substring="Storage key does not match",
+    )
     mock_create_storage_backend.return_value.get.assert_not_called()
 
 
@@ -438,10 +457,13 @@ def test_process_ingestion_job_fails_on_invalid_storage_key(
             str(document_id),
         )
 
-    assert job_repository.update.call_count == 2
-    failure_update = job_repository.update.call_args_list[1].kwargs
-    assert failure_update["status"] == IngestionJobStatus.FAILED
-    assert "Invalid storage key" in failure_update["error_message"]
+    assert job_repository.update.call_count == 1
+    _assert_terminal_failure(
+        job=job,
+        document=document,
+        session=session,
+        error_substring="Invalid stored file reference",
+    )
 
 
 @patch("app.modules.ingestion.tasks.get_session_factory")
@@ -482,10 +504,13 @@ def test_process_ingestion_job_fails_on_embedded_parent_in_storage_key(
             str(document_id),
         )
 
-    assert job_repository.update.call_count == 2
-    failure_update = job_repository.update.call_args_list[1].kwargs
-    assert failure_update["status"] == IngestionJobStatus.FAILED
-    assert "Invalid storage key" in failure_update["error_message"]
+    assert job_repository.update.call_count == 1
+    _assert_terminal_failure(
+        job=job,
+        document=document,
+        session=session,
+        error_substring="Invalid stored file reference",
+    )
     mock_create_storage_backend.return_value.get.assert_not_called()
 
 
@@ -524,9 +549,12 @@ def test_process_ingestion_job_fails_when_storage_key_missing(
             str(document_id),
         )
 
-    failure_update = job_repository.update.call_args_list[1].kwargs
-    assert failure_update["status"] == IngestionJobStatus.FAILED
-    assert "no storage key" in failure_update["error_message"].lower()
+    _assert_terminal_failure(
+        job=job,
+        document=document,
+        session=session,
+        error_substring="no storage key",
+    )
 
 
 @patch("app.modules.ingestion.tasks.get_session_factory")
@@ -564,9 +592,12 @@ def test_process_ingestion_job_fails_when_file_type_missing(
             str(document_id),
         )
 
-    failure_update = job_repository.update.call_args_list[1].kwargs
-    assert failure_update["status"] == IngestionJobStatus.FAILED
-    assert "no file type" in failure_update["error_message"].lower()
+    _assert_terminal_failure(
+        job=job,
+        document=document,
+        session=session,
+        error_substring="no file type",
+    )
 
 
 @patch("app.modules.ingestion.tasks.create_storage_backend")
@@ -716,13 +747,11 @@ def test_process_ingestion_job_fails_on_permanent_embedding_error(
             str(document_id),
         )
 
-    assert job_repository.update.call_count == 2
-    failure_update = job_repository.update.call_args_list[1].kwargs
-    assert failure_update["status"] == IngestionJobStatus.FAILED
-    assert "vectors" in failure_update["error_message"]
-    document_repository.update_status.assert_any_call(
+    _assert_terminal_failure(
+        job=job,
         document=document,
-        status=DocumentStatus.FAILED,
+        session=session,
+        error_substring="vectors",
     )
 
 
@@ -875,16 +904,11 @@ def test_process_ingestion_job_fails_after_retry_exhaustion(
             str(document_id),
         )
 
-    failure_updates = [
-        call.kwargs
-        for call in job_repository.update.call_args_list
-        if call.kwargs.get("status") == IngestionJobStatus.FAILED
-    ]
-    assert len(failure_updates) == 1
-    assert "provider timeout" in failure_updates[0]["error_message"]
-    document_repository.update_status.assert_any_call(
+    _assert_terminal_failure(
+        job=job,
         document=document,
-        status=DocumentStatus.FAILED,
+        session=session,
+        error_substring="provider timeout",
     )
 
 
@@ -1041,13 +1065,206 @@ def test_process_ingestion_job_fails_permanently_on_no_extractable_text(
         )
 
     mock_retry.assert_not_called()
-    failure_update = job_repository.update.call_args_list[1].kwargs
-    assert failure_update["status"] == IngestionJobStatus.FAILED
-    assert failure_update["error_message"] == "no extractable text"
-    document_repository.update_status.assert_any_call(
+    _assert_terminal_failure(
+        job=job,
         document=document,
-        status=DocumentStatus.FAILED,
+        session=session,
+        error_substring="no extractable text",
     )
+
+
+@patch("app.modules.ingestion.tasks.observe_ingestion_duration")
+@patch("app.modules.ingestion.tasks.observe_ingestion_failure")
+@patch("app.modules.ingestion.tasks.logger")
+@patch("app.modules.ingestion.tasks.create_storage_backend")
+@patch("app.modules.ingestion.tasks.get_settings")
+@patch("app.modules.ingestion.tasks.get_session_factory")
+def test_extraction_failure_emits_structured_log_and_metrics(
+    mock_session_factory,
+    mock_get_settings,
+    mock_create_storage_backend,
+    mock_logger,
+    mock_observe_failure,
+    mock_observe_duration,
+    job_id,
+    workspace_id,
+    document_id,
+) -> None:
+    """OBS-005: extraction failure → failed job + structured log + metrics."""
+    from app.modules.ingestion.extractors import ExtractionError
+
+    session = MagicMock()
+    mock_session_factory.return_value = MagicMock(return_value=session)
+    mock_get_settings.return_value = MagicMock(
+        CHUNK_SIZE_TOKENS=1000,
+        CHUNK_OVERLAP_TOKENS=150,
+        EMBEDDING_BATCH_SIZE=64,
+        EMBEDDING_MODEL="text-embedding-3-small",
+    )
+    storage_backend = MagicMock()
+    storage_backend.get.return_value = b"content"
+    mock_create_storage_backend.return_value = storage_backend
+
+    job = _build_job(job_id=job_id, workspace_id=workspace_id, document_id=document_id)
+    job.started_at = datetime.now()
+    document = _build_document(document_id=document_id, workspace_id=workspace_id)
+
+    job_repository = MagicMock()
+    job_repository.get_by_id.return_value = job
+    document_repository = MagicMock()
+    document_repository.get_by_id.return_value = document
+
+    extraction_error = ExtractionError("no extractable text")
+    with patch(
+        "app.modules.ingestion.tasks.IngestionJobRepository",
+        return_value=job_repository,
+    ), patch(
+        "app.modules.ingestion.tasks.DocumentRepository",
+        return_value=document_repository,
+    ), patch(
+        "app.modules.ingestion.tasks.extract_document_text",
+        side_effect=extraction_error,
+    ):
+        process_ingestion_job(
+            str(job_id),
+            str(workspace_id),
+            str(document_id),
+        )
+
+    _assert_terminal_failure(
+        job=job,
+        document=document,
+        session=session,
+        error_substring="no extractable text",
+    )
+    mock_observe_failure.assert_called_with(error_type="extraction")
+    mock_observe_duration.assert_called()
+    assert mock_observe_duration.call_args.kwargs["status"] == "failed"
+
+    mock_logger.error.assert_called()
+    log_kwargs = mock_logger.error.call_args.kwargs
+    assert mock_logger.error.call_args.args[0] == "ingestion_job_failed"
+    assert log_kwargs["job_id"] == str(job_id)
+    assert log_kwargs["document_id"] == str(document_id)
+    assert log_kwargs["workspace_id"] == str(workspace_id)
+    assert log_kwargs["error_type"] == "extraction"
+    assert log_kwargs["exc_info"] is extraction_error
+
+
+@patch("app.modules.ingestion.tasks.create_storage_backend")
+@patch("app.modules.ingestion.tasks.get_settings")
+@patch("app.modules.ingestion.tasks.get_session_factory")
+def test_process_ingestion_job_sanitizes_path_bearing_file_not_found(
+    mock_session_factory,
+    mock_get_settings,
+    mock_create_storage_backend,
+    job_id,
+    workspace_id,
+    document_id,
+) -> None:
+    """OBS-005: path-bearing FileNotFoundError is sanitized on persist."""
+    session = MagicMock()
+    mock_session_factory.return_value = MagicMock(return_value=session)
+    mock_get_settings.return_value = MagicMock(
+        CHUNK_SIZE_TOKENS=1000,
+        CHUNK_OVERLAP_TOKENS=150,
+        EMBEDDING_BATCH_SIZE=64,
+        EMBEDDING_MODEL="text-embedding-3-small",
+    )
+    storage_key = f"{workspace_id}/{document_id}/missing-runbook.pdf"
+    absolute_path = f"/var/data/atlasops/storage/{storage_key}"
+    storage_backend = MagicMock()
+    storage_backend.get.side_effect = FileNotFoundError(
+        f"Storage object not found: {absolute_path}"
+    )
+    mock_create_storage_backend.return_value = storage_backend
+
+    job = _build_job(job_id=job_id, workspace_id=workspace_id, document_id=document_id)
+    document = _build_document(
+        document_id=document_id,
+        workspace_id=workspace_id,
+        storage_key=storage_key,
+    )
+
+    job_repository = MagicMock()
+    job_repository.get_by_id.return_value = job
+    document_repository = MagicMock()
+    document_repository.get_by_id.return_value = document
+
+    with patch(
+        "app.modules.ingestion.tasks.IngestionJobRepository",
+        return_value=job_repository,
+    ), patch(
+        "app.modules.ingestion.tasks.DocumentRepository",
+        return_value=document_repository,
+    ):
+        process_ingestion_job(
+            str(job_id),
+            str(workspace_id),
+            str(document_id),
+        )
+
+    _assert_terminal_failure(job=job, document=document, session=session)
+    assert job.error_message == "Stored file could not be read"
+    assert absolute_path not in (job.error_message or "")
+    assert "/var/data" not in (job.error_message or "")
+    assert storage_key not in (job.error_message or "")
+
+
+@patch("app.modules.ingestion.tasks.create_storage_backend")
+@patch("app.modules.ingestion.tasks.get_settings")
+@patch("app.modules.ingestion.tasks.get_session_factory")
+def test_process_ingestion_job_retries_transient_storage_read_timeout(
+    mock_session_factory,
+    mock_get_settings,
+    mock_create_storage_backend,
+    job_id,
+    workspace_id,
+    document_id,
+) -> None:
+    """OBS-005 / ING-007: transient storage I/O schedules Celery retry."""
+    from celery.exceptions import Retry
+
+    session = MagicMock()
+    mock_session_factory.return_value = MagicMock(return_value=session)
+    mock_get_settings.return_value = MagicMock(
+        CHUNK_SIZE_TOKENS=1000,
+        CHUNK_OVERLAP_TOKENS=150,
+        EMBEDDING_BATCH_SIZE=64,
+        EMBEDDING_MODEL="text-embedding-3-small",
+    )
+    storage_backend = MagicMock()
+    storage_backend.get.side_effect = TimeoutError("storage read timed out")
+    mock_create_storage_backend.return_value = storage_backend
+
+    job = _build_job(job_id=job_id, workspace_id=workspace_id, document_id=document_id)
+    document = _build_document(document_id=document_id, workspace_id=workspace_id)
+
+    job_repository = MagicMock()
+    job_repository.get_by_id.return_value = job
+    document_repository = MagicMock()
+    document_repository.get_by_id.return_value = document
+
+    with patch(
+        "app.modules.ingestion.tasks.IngestionJobRepository",
+        return_value=job_repository,
+    ), patch(
+        "app.modules.ingestion.tasks.DocumentRepository",
+        return_value=document_repository,
+    ), patch.object(
+        process_ingestion_job,
+        "retry",
+        side_effect=Retry(message="retry"),
+    ) as mock_retry:
+        with pytest.raises(Retry):
+            process_ingestion_job(
+                str(job_id),
+                str(workspace_id),
+                str(document_id),
+            )
+
+    mock_retry.assert_called_once()
+    assert job.status != IngestionJobStatus.FAILED
 
 
 @patch("app.modules.ingestion.tasks.create_storage_backend")
@@ -1111,11 +1328,9 @@ def test_process_ingestion_job_fails_on_storage_error(
             str(document_id),
         )
 
-    assert job_repository.update.call_count == 2
-    failure_update = job_repository.update.call_args_list[1].kwargs
-    assert failure_update["status"] == IngestionJobStatus.FAILED
-    assert "pgvector insert failed" in failure_update["error_message"]
-    document_repository.update_status.assert_any_call(
+    _assert_terminal_failure(
+        job=job,
         document=document,
-        status=DocumentStatus.FAILED,
+        session=session,
+        error_substring="pgvector insert failed",
     )

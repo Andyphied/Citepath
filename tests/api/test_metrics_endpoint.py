@@ -27,6 +27,8 @@ def test_metrics_endpoint_returns_prometheus_text(minimal_env) -> None:
     assert "http_requests_total" in body
     assert "http_errors_total" in body
     assert "ingestion_jobs_total" in body
+    assert "ingestion_failures_total" in body
+    assert "ingestion_duration_seconds" in body
     assert "llm_calls_total" in body
 
 

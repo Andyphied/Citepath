@@ -360,7 +360,7 @@ All admin routes: **Owner, Admin only**.
 | Endpoint | Story | Notes |
 |----------|-------|-------|
 | `GET .../admin/documents-overview` | ADMIN-001 | Counts by status + recent uploads |
-| `GET .../admin/ingestion-jobs` | ADMIN-002 | Status filter; document title join |
+| `GET .../admin/ingestion-jobs` | ADMIN-002 / OBS-007 | Status filter; document title join; `pending_count` |
 | `GET .../admin/recent-questions` | ADMIN-003 | Default page size 50 |
 | `GET .../admin/usage` | ADMIN-004 / USAGE-004 | 7-day totals + estimated cost (no duplicate endpoint) |
 | `GET .../admin/failed-jobs` | ADMIN-005 | 24h/7d counts; link clients to `?status=failed` |
@@ -371,7 +371,8 @@ All admin routes: **Owner, Admin only**.
 
 | Endpoint | Purpose |
 |----------|---------|
-| `GET /health` | `{ "status": "ok", "db": "ok", "redis": "ok", "worker": "ok" }` |
-| `GET /metrics` | Prometheus text format (basic counters; unauthenticated — restrict at network edge) |
+| `GET /health` | Liveness: `{ "status": "ok" }` |
+| `GET /health/ready` | Readiness: `{ "status", "database", "redis", "queue_depth", "worker": { "status", "queue_depth" } }`. `worker.status` = Redis queue probe ok/error (not Celery process liveness). On probe failure `queue_depth` is coerced to `0` with `worker.status=error`. |
+| `GET /metrics` | Prometheus text format (counters + ingestion duration histogram; unauthenticated — restrict at network edge) |
 
 OpenAPI: auto-generated at `/docs` (INFRA-008).

@@ -354,6 +354,7 @@ def test_ingestion_jobs_list_failed_with_error_and_title(admin_api_context) -> N
     assert item["status"] == "failed"
     assert item["document_title"] == "broken-runbook.md"
     assert item["error_message"] == "extract failed: corrupt pdf"
+    assert body["pending_count"] == 0
 
 
 def test_recent_questions_lists_user_messages_with_timestamps(

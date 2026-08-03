@@ -11,3 +11,4 @@ def test_celery_app_uses_redis_broker(minimal_env) -> None:
     assert app.conf.result_backend is None
     assert app.conf.task_acks_late is True
     assert app.conf.task_time_limit == 600
+    assert app.conf.task_default_queue == "celery"
