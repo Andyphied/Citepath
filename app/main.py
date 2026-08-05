@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.utils import get_openapi
 
 from app.api.agent_errors import (
     agent_completion_error_handler,
@@ -109,11 +110,115 @@ from app.modules.workspaces.exceptions import (
 )
 
 
+OPENAPI_TAGS = [
+    {"name": "health", "description": "Liveness and readiness probes"},
+    {"name": "metrics", "description": "Prometheus metrics scrape endpoint"},
+    {
+        "name": "auth",
+        "description": "Registration, login, logout, and current user profile",
+    },
+    {
+        "name": "workspaces",
+        "description": "Workspace CRUD and membership (RBAC)",
+    },
+    {
+        "name": "documents",
+        "description": "Document upload, list, detail, delete, and re-index",
+    },
+    {
+        "name": "ingestion",
+        "description": "Ingestion job status and retry",
+    },
+    {
+        "name": "queries",
+        "description": "Workspace-scoped RAG question answering with citations",
+    },
+    {
+        "name": "conversations",
+        "description": "RAG conversation history",
+    },
+    {
+        "name": "agent-runs",
+        "description": "Controlled incident investigation agent runs and tool calls",
+    },
+    {
+        "name": "admin",
+        "description": "Owner/Admin dashboard aggregates (usage, jobs, audit)",
+    },
+]
+
+OPENAPI_DESCRIPTION = """
+Workspace-scoped RAG and incident investigation API for AtlasOps AI.
+
+## Authentication
+
+Most endpoints require a Bearer JWT:
+
+1. `POST /auth/register` or `POST /auth/login` → `access_token`
+2. Click **Authorize** in Swagger UI and paste the token (or send
+   `Authorization: Bearer <token>`)
+3. Call workspace-scoped routes with a workspace you belong to
+
+Tokens are **HS256** JWTs (`sub` = user id, `exp`, `iat`). Logout is
+acknowledgment-only in MVP — clients must discard the token (no server
+blocklist). Swagger UI `persistAuthorization` keeps the JWT in browser
+storage until cleared — fine for local demo; do not rely on it for shared
+or internet-facing deploys.
+
+## Workspace isolation
+
+Every `{workspace_id}` route checks membership before the handler runs
+(non-members get **403**). Tenant-owned queries (documents, chunks,
+conversations, agent runs, usage, audit) are scoped by `workspace_id` at
+the repository layer. Cross-workspace resource access returns **404**
+(not 403) to avoid enumeration.
+
+## Docs (local demo)
+
+- Swagger UI: `/docs`
+- ReDoc: `/redoc`
+- OpenAPI JSON: `/openapi.json`
+
+These surfaces are intended for **local demo**. Restrict at the network
+edge before any shared or internet-facing deploy. Architecture package:
+see repository `docs/README.md`.
+""".strip()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Load and validate configuration on startup."""
     get_settings()
     yield
+
+
+def custom_openapi(app: FastAPI):
+    """Build OpenAPI schema once; keep BearerJWT metadata explicit."""
+
+    def _openapi() -> dict:
+        if app.openapi_schema:
+            return app.openapi_schema
+        schema = get_openapi(
+            title=app.title,
+            version=app.version,
+            description=app.description,
+            routes=app.routes,
+            tags=app.openapi_tags,
+        )
+        schema.setdefault("components", {}).setdefault("securitySchemes", {})
+        schema["components"]["securitySchemes"]["BearerJWT"] = {
+            "type": "http",
+            "scheme": "bearer",
+            "bearerFormat": "JWT",
+            "description": (
+                "HS256 JWT from POST /auth/login or POST /auth/register. "
+                "Header: Authorization: Bearer <access_token>"
+            ),
+        }
+        app.openapi_schema = schema
+        return app.openapi_schema
+
+    return _openapi
 
 
 def create_app() -> FastAPI:
@@ -122,9 +227,13 @@ def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(
         title="AtlasOps AI",
-        description="Workspace-scoped RAG and incident investigation platform",
+        description=OPENAPI_DESCRIPTION,
+        version="0.1.0",
         lifespan=lifespan,
+        openapi_tags=OPENAPI_TAGS,
+        swagger_ui_parameters={"persistAuthorization": True},
     )
+    app.openapi = custom_openapi(app)  # type: ignore[method-assign]
     # Innermost first: Metrics → RequestLogging; RequestId then CORS outermost.
     app.add_middleware(MetricsMiddleware)
     app.add_middleware(RequestLoggingMiddleware)

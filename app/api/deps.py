@@ -117,7 +117,15 @@ def enforce_login_rate_limit(request: Request) -> None:
 
 LoginRateLimitDep = Annotated[None, Depends(enforce_login_rate_limit)]
 
-_bearer_scheme = HTTPBearer(auto_error=False)
+# Named scheme surfaces in OpenAPI as Bearer JWT (Swagger Authorize).
+_bearer_scheme = HTTPBearer(
+    auto_error=False,
+    scheme_name="BearerJWT",
+    description=(
+        "HS256 JWT access token from POST /auth/login or POST /auth/register. "
+        "Send as: Authorization: Bearer <access_token>"
+    ),
+)
 
 
 def get_current_user(

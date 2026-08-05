@@ -14,6 +14,19 @@ ConfidenceLevel = Literal["high", "medium", "low"]
 class QueryRequest(BaseModel):
     """Workspace-scoped RAG query request."""
 
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "question": (
+                        "What should I check for billing 502 errors "
+                        "after deployment?"
+                    ),
+                }
+            ]
+        }
+    )
+
     question: str = Field(min_length=1)
     conversation_id: UUID | None = None
     filters: RetrievalFilters | None = None
@@ -42,6 +55,36 @@ class CitationResponse(BaseModel):
 
 class QueryResponse(BaseModel):
     """Workspace-scoped RAG query response."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "conversation_id": "22222222-2222-2222-2222-222222222222",
+                    "message_id": "33333333-3333-3333-3333-333333333333",
+                    "answer": (
+                        "Check the billing API gateway health, recent deploy "
+                        "diffs, and the billing 502 runbook steps."
+                    ),
+                    "confidence": "high",
+                    "citations": [
+                        {
+                            "chunk_id": "44444444-4444-4444-4444-444444444444",
+                            "document_id": "55555555-5555-5555-5555-555555555555",
+                            "document_title": "Billing API 502 Runbook",
+                            "chunk_preview": "After a deploy, verify...",
+                            "score": 0.91,
+                            "metadata": {"source_type": "runbook"},
+                        }
+                    ],
+                    "suggested_followups": [
+                        "What services depend on the billing API?"
+                    ],
+                    "insufficient_context": False,
+                }
+            ]
+        }
+    )
 
     conversation_id: UUID
     message_id: UUID

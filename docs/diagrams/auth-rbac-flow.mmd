@@ -1,0 +1,19 @@
+flowchart TD
+  A[HTTP Request] --> B{Public route?}
+  B -->|Yes auth register login| C[Handle without membership]
+  B -->|No| D[Extract Bearer JWT]
+  D --> E{JWT valid and not expired?}
+  E -->|No| F[401 token_invalid or token_expired]
+  E -->|Yes| G[Load user into request context]
+
+  G --> H{Route includes workspace_id?}
+  H -->|No| I[Proceed e.g. list workspaces]
+  H -->|Yes| J[Load workspace_members row]
+  J --> K{User is member?}
+  K -->|No| L[403 + audit failed_authorization]
+  K -->|Yes| M[Resolve role Owner Admin Member Viewer]
+  M --> N{Action permitted for role?}
+  N -->|No| L
+  N -->|Yes| O[Inject workspace context into service]
+  O --> P[Repository queries MUST filter workspace_id]
+  P --> Q[Execute handler return response]

@@ -1,0 +1,42 @@
+flowchart TB
+  subgraph client [Client Tier]
+    Browser[Browser]
+    WebApp[Next.js Web App<br/>or Swagger UI]
+  end
+
+  subgraph compute [Application Tier]
+    API[FastAPI API Service<br/>REST + OpenAPI]
+    Worker[Celery Worker<br/>Ingestion Jobs]
+  end
+
+  subgraph data [Data Tier]
+    PG[(PostgreSQL 16<br/>Relational + pgvector)]
+    Redis[(Redis 7<br/>Broker + Cache)]
+    S3[(S3 / Local FS<br/>Document Files)]
+  end
+
+  subgraph ai [AI Providers]
+    LLM[OpenAI / Anthropic<br/>Chat Completions]
+    Embed[Embedding Provider<br/>OpenAI text-embedding-3-small]
+  end
+
+  subgraph deploy [Deployment Environment]
+    Compose[Docker Compose - Local]
+    ECS[AWS ECS Fargate - Cloud]
+  end
+
+  Browser --> WebApp
+  WebApp -->|HTTPS REST| API
+  API --> PG
+  API --> Redis
+  API --> S3
+  API --> LLM
+  API --> Embed
+  Redis -->|task queue| Worker
+  Worker --> PG
+  Worker --> S3
+  Worker --> Embed
+  API -.-> Compose
+  Worker -.-> Compose
+  API -.-> ECS
+  Worker -.-> ECS

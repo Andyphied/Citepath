@@ -2,9 +2,11 @@
 # Fresh clone: docker compose up --build
 # Web UI: http://localhost:3000  API: http://localhost:8000
 # Optional Flower (local Celery UI): docker compose --profile flower up --build
-# Optional: cp .env.example .env to override defaults for host-native tools.
-# Operator overrides (compose interpolates from shell / .env):
+# Optional: cp .env.example .env to override defaults (Compose interpolates from shell / .env).
+# Operator overrides:
+#   OPENAI_API_KEY  ANTHROPIC_API_KEY  LLM_PROVIDER
 #   WORKER_HEARTBEAT_INTERVAL_SECONDS  CELERY_DEFAULT_QUEUE
+# Live seed + RAG demo require a real provider key (placeholder is boot-only).
 
 x-app-environment: &app-environment
   DATABASE_URL: postgresql+psycopg2://atlasops:atlasops@postgres:5432/atlasops
@@ -12,8 +14,9 @@ x-app-environment: &app-environment
   JWT_SECRET_KEY: dev-only-change-me-in-production
   STORAGE_BACKEND: local
   STORAGE_PATH: /uploads
-  LLM_PROVIDER: openai
-  OPENAI_API_KEY: sk-dev-placeholder-not-used-locally
+  LLM_PROVIDER: ${LLM_PROVIDER:-openai}
+  OPENAI_API_KEY: ${OPENAI_API_KEY:-sk-dev-placeholder-not-used-locally}
+  ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
   ENVIRONMENT: development
   LOG_LEVEL: INFO
   # OBS-007: worker structured heartbeat + Redis LLEN key for /health/ready.queue_depth

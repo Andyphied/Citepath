@@ -14,6 +14,19 @@ ConfidenceLevel = Literal["high", "medium", "low"]
 class AgentRunRequest(BaseModel):
     """Start an incident investigation."""
 
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "objective": (
+                        "Investigate billing API 502 errors after the latest "
+                        "deployment and recommend checks from workspace runbooks."
+                    ),
+                }
+            ]
+        }
+    )
+
     objective: str = Field(min_length=1)
     conversation_id: UUID | None = None
 
@@ -42,6 +55,61 @@ class InvestigationSummary(BaseModel):
 
 class AgentRunResponse(BaseModel):
     """Synchronous agent run result returned from POST."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "agent_run_id": "66666666-6666-6666-6666-666666666666",
+                    "status": "completed",
+                    "summary": {
+                        "problem_statement": (
+                            "Billing API returning 502 after deploy"
+                        ),
+                        "summary": (
+                            "Likely gateway or dependency regression; "
+                            "follow runbook checks before rollback."
+                        ),
+                        "likely_causes": [
+                            "Upstream timeout after deploy",
+                            "Misconfigured billing dependency",
+                        ],
+                        "likely_related_systems": [
+                            "billing-api",
+                            "api-gateway",
+                        ],
+                        "recommended_checks": [
+                            "Verify gateway health",
+                            "Inspect recent deploy diffs",
+                        ],
+                        "related_documents": [
+                            "55555555-5555-5555-5555-555555555555"
+                        ],
+                        "action_items": [
+                            "Page on-call if 502 rate stays elevated"
+                        ],
+                        "risks_or_unknowns": [
+                            "No live metrics in this MVP demo"
+                        ],
+                        "next_steps": [
+                            "Run suggest_debugging_steps for billing-api"
+                        ],
+                    },
+                    "citations": [
+                        {
+                            "chunk_id": "44444444-4444-4444-4444-444444444444",
+                            "document_id": "55555555-5555-5555-5555-555555555555",
+                            "document_title": "Billing API 502 Runbook",
+                            "chunk_preview": "After a deploy, verify...",
+                            "score": 0.88,
+                            "metadata": {"source_type": "runbook"},
+                        }
+                    ],
+                    "tool_calls_count": 3,
+                }
+            ]
+        }
+    )
 
     agent_run_id: UUID
     status: str

@@ -1,0 +1,22 @@
+flowchart TD
+  A[User starts investigation] --> B[API: auth workspace RBAC Member+]
+  B --> C[Create agent_run status=running]
+  C --> D[Parse objective service symptom errors]
+  D --> E[Agent loop step 1..max_steps=8]
+
+  E --> F[LLM plans next tool from registry]
+  F --> G{Tool allowed?}
+  G -->|No| H[Reject tool log violation terminate]
+  G -->|Yes| I[Execute tool workspace-scoped read-only]
+  I --> J[Log agent_tool_call input output latency]
+  J --> K[Append observation to run context]
+  K --> L{Objective satisfied or max steps?}
+  L -->|No| E
+  L -->|Yes| M[Generate structured investigation summary]
+  M --> N[Attach citations from tool results]
+  N --> O[Update agent_run status=completed]
+  O --> P[Log usage events + audit agent_run]
+  P --> Q[Return structured result + tool call history]
+
+  E -->|timeout 120s or error| R[Set agent_run status=failed]
+  R --> S[Return partial result if any]

@@ -1,0 +1,43 @@
+flowchart TB
+  subgraph local [Local Development - Docker Compose]
+    DevAPI[api container FastAPI]
+    DevWorker[worker container Celery]
+    DevPG[(postgres + pgvector)]
+    DevRedis[(redis)]
+    DevVol[local volume uploads]
+    DevAPI --> DevPG
+    DevAPI --> DevRedis
+    DevAPI --> DevVol
+    DevWorker --> DevPG
+    DevWorker --> DevRedis
+    DevWorker --> DevVol
+  end
+
+  subgraph ci [CI - GitHub Actions]
+    Lint[Lint + typecheck]
+    Test[pytest integration]
+    Build[Build Docker images]
+    Lint --> Test --> Build
+  end
+
+  subgraph cloud [AWS Cloud - ECS Fargate]
+    ALB[Application Load Balancer]
+    ECSAPI[ECS Service: api]
+    ECSWorker[ECS Service: worker]
+    RDS[(RDS PostgreSQL pgvector)]
+    ElastiCache[(ElastiCache Redis)]
+    S3Bucket[(S3 Bucket documents)]
+    Secrets[Secrets Manager]
+    ALB --> ECSAPI
+    ECSAPI --> RDS
+    ECSAPI --> ElastiCache
+    ECSAPI --> S3Bucket
+    ECSAPI --> Secrets
+    ECSWorker --> RDS
+    ECSWorker --> ElastiCache
+    ECSWorker --> S3Bucket
+    ECSWorker --> Secrets
+  end
+
+  Build -->|push ECR| cloud
+  DevAPI -.->|same image| ECSAPI

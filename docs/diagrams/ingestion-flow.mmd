@@ -1,0 +1,23 @@
+flowchart TD
+  A[Client uploads file] --> B[API: validate auth + workspace + role]
+  B --> C[Validate file type and size]
+  C --> D[Store file in object storage]
+  D --> E[Create document record status=uploaded]
+  E --> F[Create ingestion_job status=pending]
+  F --> G[Enqueue Celery task]
+  G --> H[Return 202 document + job ids]
+
+  G --> I[Worker picks up job]
+  I --> J[Set job status=processing]
+  J --> K[Extract text from PDF/MD/TXT/JSON]
+  K --> L[Chunk content 800-1200 tokens overlap 100-200]
+  L --> M[Batch generate embeddings]
+  M --> N[Upsert document_chunks with vectors]
+  N --> O[Update document status=indexed]
+  O --> P[Set job status=completed]
+  P --> Q[Log embedding usage event]
+  P --> R[Write audit log document_upload indexed]
+
+  K -->|failure| S[Set job status=failed store error]
+  S --> T[Set document status=failed]
+  S --> U[Log failure metric and usage if partial]

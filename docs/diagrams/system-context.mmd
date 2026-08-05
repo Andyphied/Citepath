@@ -1,0 +1,33 @@
+flowchart TB
+  subgraph actors [External Users]
+    Engineer[Engineer / SRE]
+    Admin[Workspace Admin / Owner]
+  end
+
+  subgraph atlasops [AtlasOps AI System]
+    WebApp[Web App / Admin UI]
+    API[FastAPI Backend]
+    Worker[Celery Worker]
+    DB[(PostgreSQL + pgvector)]
+    Redis[(Redis)]
+    Storage[(Object Storage)]
+  end
+
+  subgraph external [External Services]
+    OpenAI[OpenAI API]
+    Anthropic[Anthropic API]
+  end
+
+  Engineer --> WebApp
+  Admin --> WebApp
+  WebApp --> API
+  API --> DB
+  API --> Redis
+  API --> Storage
+  API --> OpenAI
+  API --> Anthropic
+  Redis --> Worker
+  Worker --> DB
+  Worker --> Storage
+  Worker --> OpenAI
+  Worker --> Anthropic

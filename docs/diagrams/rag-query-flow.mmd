@@ -1,0 +1,18 @@
+flowchart TD
+  A[User asks question] --> B[API: JWT auth + workspace membership]
+  B --> C[RBAC: all roles may query]
+  C --> D[Load or create conversation]
+  D --> E[Generate query embedding]
+  E --> F[Workspace-scoped vector search top-k=8]
+  F --> G{Scores above threshold?}
+  G -->|No| H[Return insufficient-context response]
+  H --> I[Store assistant message confidence=low]
+  I --> J[Return response no LLM hallucination path]
+
+  G -->|Yes| K[Select top 4-5 chunks for context]
+  K --> L[Build grounded prompt with chunk boundaries]
+  L --> M[Call LLM provider]
+  M --> N[Parse answer + map citations to chunk ids]
+  N --> O[Store user + assistant messages]
+  O --> P[Log usage_event LLM + embedding]
+  P --> Q[Return answer citations confidence]

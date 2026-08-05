@@ -375,4 +375,14 @@ All admin routes: **Owner, Admin only**.
 | `GET /health/ready` | Readiness: `{ "status", "database", "redis", "queue_depth", "worker": { "status", "queue_depth" } }`. `worker.status` = Redis queue probe ok/error (not Celery process liveness). On probe failure `queue_depth` is coerced to `0` with `worker.status=error`. |
 | `GET /metrics` | Prometheus text format (counters + ingestion duration histogram; unauthenticated — restrict at network edge) |
 
-OpenAPI: auto-generated at `/docs` (INFRA-008).
+OpenAPI (INFRA-008): Swagger UI at `/docs`, ReDoc at `/redoc`, schema at `/openapi.json`.
+Bearer JWT is documented as the `BearerJWT` HTTP security scheme. Key routes
+(`POST .../query`, `POST .../agent-runs`) include request/response examples.
+`/docs`, `/redoc`, and `/openapi.json` are **local-demo** surfaces — restrict
+at the network edge before shared/internet-facing deploys. Swagger
+`persistAuthorization` keeps the JWT in the browser until cleared.
+Non-members hitting a workspace boundary get **403**; cross-workspace
+resource IDs return **404**.
+
+**Note:** This design doc historically referenced a `/api/v1` prefix; the running
+MVP FastAPI app mounts routes at the root (e.g. `/auth/login`, `/workspaces/...`).
