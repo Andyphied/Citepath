@@ -62,4 +62,4 @@ npm run lint     # eslint
 | `/documents` | Stub → UI-003 |
 | `/ask` | RAG Q&A with citations (UI-004) |
 | `/agent` | Incident investigation with structured summary (UI-005) |
-| `/admin` | Stub → UI-006 (nav gated to owner/admin) |
+| `/admin` | Admin dashboard: corpus, jobs, 7-day usage (UI-006; Owner/Admin) |

@@ -130,3 +130,96 @@ export interface AgentRunResponse {
   citations: CitationItem[];
   tool_calls_count: number;
 }
+
+/** ADMIN-001 document status counts. */
+export interface DocumentStatusCounts {
+  uploaded: number;
+  processing: number;
+  indexed: number;
+  failed: number;
+}
+
+export interface RecentDocumentUpload {
+  id: string;
+  title: string | null;
+  status: DocumentStatusValue;
+  status_label: string;
+  uploaded_by: string | null;
+  created_at: string;
+}
+
+export interface DocumentsOverviewResponse {
+  workspace_id: string;
+  total: number;
+  by_status: DocumentStatusCounts;
+  recent_uploads: RecentDocumentUpload[];
+}
+
+export type IngestionJobStatusValue =
+  | "pending"
+  | "processing"
+  | "completed"
+  | "failed"
+  | string;
+
+/** ADMIN-002 / ADMIN-005 ingestion job row. */
+export interface AdminIngestionJobItem {
+  id: string;
+  workspace_id: string;
+  document_id: string;
+  document_title: string | null;
+  status: IngestionJobStatusValue;
+  attempt_count: number;
+  error_message: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  created_at: string;
+}
+
+export interface AdminIngestionJobListResponse {
+  items: AdminIngestionJobItem[];
+  total: number;
+  page: number;
+  page_size: number;
+  pending_count: number;
+}
+
+/** ADMIN-005 failed-jobs widget. */
+export interface FailedJobsWidgetResponse {
+  failed_last_24h: number;
+  failed_last_7d: number;
+  items: AdminIngestionJobItem[];
+  empty_message: string | null;
+}
+
+/** USAGE-004 / ADMIN-004 usage totals (cost may arrive as string from Decimal). */
+export interface UsageTotals {
+  prompt_tokens: number;
+  completion_tokens: number;
+  embedding_tokens: number;
+  estimated_cost_usd: string | number;
+  call_count: number;
+}
+
+export interface WorkspaceUsageSummaryResponse {
+  workspace_id: string;
+  from: string;
+  to: string;
+  totals: UsageTotals;
+  by_day: Array<{
+    date: string;
+    prompt_tokens: number;
+    completion_tokens: number;
+    embedding_tokens: number;
+    estimated_cost_usd: string | number;
+    call_count: number;
+  }>;
+  by_operation: Array<{
+    operation: string;
+    prompt_tokens: number;
+    completion_tokens: number;
+    embedding_tokens: number;
+    estimated_cost_usd: string | number;
+    call_count: number;
+  }>;
+}

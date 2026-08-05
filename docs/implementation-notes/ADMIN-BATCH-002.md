@@ -103,6 +103,6 @@ is satisfied by existing **USAGE-004** `GET .../admin/usage` (no duplicate endpo
 
 ## Follow-up Items
 
-- **UI-006:** Wire dashboard widgets to these endpoints + `/admin/usage`
+- **UI-006:** Wire dashboard widgets to these endpoints + `/admin/usage` (implemented; Gate 6 pending)
 - **ING-007:** Retry failed ingestion jobs from admin list
 - Optional: filter recent-questions by `Conversation.mode == rag`
