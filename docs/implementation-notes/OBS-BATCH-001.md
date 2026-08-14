@@ -1,11 +1,11 @@
 # OBS-BATCH-001 Implementation Note
 
 Batch: **OBS-005** + **OBS-007** — Phase 2 OBS reliability closeout  
-Gate 1 sequence: `citepath-story-implementer` (Step 2a) → `citepath-platform-engineer` (Step 2b)
+Implementation split: application layer first, then platform/ops.
 
 ## Batch Summary
 
-Step 2a delivers ingestion terminal-failure observability (structured logs, atomic failed status, Prometheus failure/duration metrics) and app-layer worker visibility (heartbeat logs, readiness queue depth, admin `pending_count`). Step 2b owns compose/worker ops tuning, optional Flower, and operator smoke that queue depth drains under load.
+The application layer delivers ingestion terminal-failure observability (structured logs, atomic failed status, Prometheus failure/duration metrics) and app-layer worker visibility (heartbeat logs, readiness queue depth, admin `pending_count`). Platform/ops owns compose/worker ops tuning, optional Flower, and operator smoke that queue depth drains under load.
 
 ## OBS-005 — Ingestion Failure Handling
 
@@ -77,16 +77,16 @@ Celery workers emit structured heartbeats on an env-configurable interval. `/hea
 | Docs: `11-observability`, `10-ingestion-pipeline`, `06-api-design` | Behavior sync |
 | Tests: health, heartbeat, admin unit/API | Coverage |
 
-### Out of Scope for Step 2a (handoff to 2b)
+### Out of scope for the application layer (handoff to platform)
 
 - Docker Compose worker concurrency / resource tuning
 - Flower (optional dev tool)
 - Operator smoke proving queue depth decreases over time under a real worker drain
 - Multiprocess metrics aggregation for worker Prometheus scrapes
 
-## Step 2b Handoff (complete)
+## Platform handoff (complete)
 
-Platform engineer should:
+Platform follow-up:
 
 1. Verify compose `worker` service starts and emits `worker_heartbeat` at configured interval — **done**
 2. Optionally document/enable Flower for local debugging (not required prod) — **done** (`--profile flower`)
@@ -94,7 +94,7 @@ Platform engineer should:
 4. Confirm env vars documented in README/compose if needed for operators — **done**
 5. Do not rework app-layer heartbeat/health/admin contracts unless ops requires it — **honored** (only `task_default_queue` aligned to `CELERY_DEFAULT_QUEUE`)
 
-## OBS-007 — Platform layer (Step 2b)
+## OBS-007 — Platform layer
 
 ### Summary
 
@@ -145,7 +145,7 @@ Flower profile validated via `docker compose --profile flower config --services`
 - Compose host `5432` may conflict with other local Postgres containers; internal service DNS is unaffected — remap host port via override if needed
 - Worker Prometheus counters still process-local (unchanged from 2a)
 
-## Verification (Step 2a)
+## Verification (application layer)
 
 ```bash
 source .venv/bin/activate
@@ -161,7 +161,7 @@ pytest \
 
 API admin pending_count covered in `tests/api/test_admin_dashboard.py` (requires test DB).
 
-## Verification (Step 2b)
+## Verification (platform layer)
 
 ```bash
 docker compose config
@@ -174,20 +174,20 @@ pytest tests/unit/test_celery_app.py tests/unit/test_worker_heartbeat.py tests/u
 
 ## Phase 2 OBS exit evidence
 
-| Story | App (2a) | Platform (2b) | Status |
+| Story | App | Platform | Status |
 |-------|----------|---------------|--------|
-| OBS-005 | Atomic fail + structured logs + failure/duration metrics | n/a | `in_progress` (Gate 6 pending) |
-| OBS-007 | Heartbeat + ready queue_depth + admin pending_count | Compose env, queue key align, Flower profile, drain smoke | `in_progress` (Gate 6 pending) |
+| OBS-005 | Atomic fail + structured logs + failure/duration metrics | n/a | `in_progress` (pending acceptance) |
+| OBS-007 | Heartbeat + ready queue_depth + admin pending_count | Compose env, queue key align, Flower profile, drain smoke | `in_progress` (pending acceptance) |
 
 Acceptance (OBS-007): jobs in queue + healthy worker → queue depth decreases — **demonstrated** in smoke above.
 
 ## Story Status
 
-Both stories remain `in_progress` until Gate 6 after full batch (review + commit).
+Both stories remain `in_progress` until after full-batch review and commit.
 
-## Fix Loop (Step 4 — after Gate 3 REQUEST CHANGES)
+## Review fix cycle
 
-Addressed Combined Review must-fix / small follow-ups without expanding batch scope:
+Addressed review must-fix / small follow-ups without expanding batch scope:
 
 | Item | Resolution | Evidence |
 |------|------------|----------|

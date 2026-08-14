@@ -32,9 +32,9 @@ An engineer asks:
 
 Citepath should retrieve relevant deployment notes, incident history, service docs, runbooks, and architecture context, then produce a grounded answer with citations and recommended next steps.
 
-## 3. Why This Is a Strong Portfolio Project
+## 3. Why This Architecture Matters
 
-This project shows principal-level engineering because it demonstrates:
+Citepath is a production-style AI platform, not a chatbot wrapper. The design emphasizes:
 
 * AI/LLM product architecture, not just prompt usage.
 * RAG pipeline design with embeddings, chunking, metadata, and retrieval ranking.
@@ -70,7 +70,7 @@ Citepath solves this by giving teams an AI assistant that answers using retrieve
 * Help engineering teams reduce time spent searching for internal technical knowledge.
 * Improve incident response speed.
 * Make onboarding easier for new engineers.
-* Provide a strong portfolio example of production-grade backend, AI, and cloud engineering.
+* Ship a production-style backend that teams can run locally and deploy to cloud.
 
 ### Product goals
 
@@ -402,7 +402,7 @@ Potential choices:
 * Qdrant
 * Weaviate
 
-For portfolio simplicity, I recommend:
+For MVP simplicity, I recommend:
 
 > PostgreSQL + pgvector
 
@@ -658,7 +658,7 @@ This structure shows senior-level organization.
 
 ### Frontend
 
-For portfolio purposes, keep this simple:
+For the MVP, keep this simple:
 
 * Next.js
 * React
@@ -670,7 +670,7 @@ Or skip complex frontend and build:
 * Minimal admin UI
 * Clean demo screenshots
 
-Because your portfolio is backend/platform focused, the frontend does not need to be fancy.
+Because this is a backend/platform product, the frontend does not need to be fancy.
 
 ## 15. Data Model
 
@@ -876,7 +876,7 @@ The assistant must not:
 
 ## 18. Evaluation Plan
 
-Include this in the portfolio because it shows seniority.
+Include an evaluation plan so retrieval quality is measurable.
 
 ### Retrieval evaluation
 
@@ -1035,9 +1035,9 @@ Expected answer:
 * Deployment docs.
 * Architecture diagram.
 
-## 22. Acceptance Criteria for Portfolio Readiness
+## 22. Acceptance Criteria for MVP Readiness
 
-The project is portfolio-ready when:
+The project meets the MVP bar when:
 
 * A user can upload documents.
 * Documents are chunked, embedded, and indexed.
@@ -1049,11 +1049,11 @@ The project is portfolio-ready when:
 * README explains architecture and tradeoffs.
 * Tests cover core services.
 * Terraform files demonstrate deployable infrastructure.
-* Screenshots and diagrams are available for Upwork portfolio.
+* Screenshots and diagrams are available.
 
-## 23. Principal-Level Implementation Details to Highlight
+## 23. Implementation Details to Highlight
 
-These are the details that will make the project look senior/principal-level:
+These implementation details keep the system production-aware:
 
 ### 1. Clean architecture
 
@@ -1143,27 +1143,7 @@ Use this structure:
 ## Future Improvements
 ```
 
-## 25. Upwork Portfolio Entry
-
-When the project is finished, add this to Upwork.
-
-**Title**
-
-> AI Agent & RAG Knowledge Platform
-
-**Role**
-
-> Principal Backend & AI Engineer
-
-**Description**
-
-> Built a production-style AI knowledge platform for engineering teams using RAG, vector search, AI agents, OpenAI/Claude APIs, and FastAPI. The system ingests technical documents, generates embeddings, retrieves relevant context, and produces grounded answers with citations. Includes token optimization, tool-based agent workflows, workspace isolation, Docker deployment, and Terraform-based cloud infrastructure.
-
-**Skills**
-
-> Python, FastAPI, OpenAI API, LangChain, RAG, Vector Database, Terraform, Docker, AWS
-
-## 26. Final Recommendation
+## 25. Final Recommendation
 
 Build this as a **backend-first product** with a clean minimal UI.
 
@@ -1180,4 +1160,4 @@ Do not spend too much time making the frontend beautiful. Spend your effort on:
 * README
 * diagrams
 
-That is what will communicate principal-level skill.
+That is what communicates production-aware engineering.

@@ -38,7 +38,7 @@ and aggregates from `usage_events`.
   `PRICING_USD_PER_1K_TOKENS` for known provider/model pairs.
 - Costs quantized to 6 decimal places (`ROUND_HALF_UP`).
 - Unknown models leave cost `NULL` (not invent a rate).
-- Root README documents assumptions: estimates are demo/portfolio figures, not billing.
+- Root README documents assumptions: estimates are demo figures, not billing.
 
 ### USAGE-004
 

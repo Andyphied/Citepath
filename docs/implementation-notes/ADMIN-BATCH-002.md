@@ -87,7 +87,7 @@ is satisfied by existing **USAGE-004** `GET .../admin/usage` (no duplicate endpo
 - Introduced `app/modules/admin` aggregation service per module-boundary docs;
   reuses document / ingestion / RAG repositories (no ORM owned by admin).
 - ADMIN-004 reuses USAGE-004 endpoint rather than inventing a dashboard-specific
-  usage route (matches story notes and Gate 1 plan).
+  usage route (matches story notes).
 - Failed-jobs widget endpoint returns counts + sample items; full filtered list
   remains ADMIN-002 with `status=failed`.
 - Question preview truncates at 200 characters; full assistant prompts never returned.

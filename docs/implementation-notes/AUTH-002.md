@@ -4,7 +4,7 @@
 
 Implemented public user login at `POST /auth/login`. Valid credentials are checked against the stored bcrypt hash and return a JWT access token with the same response shape as registration. Invalid credentials return a generic `401 invalid_credentials` response without revealing whether the email exists.
 
-Gate 3 review fixes (Step 4): added per-IP login rate limiting (10/min), constant-time credential verification via dummy bcrypt hash on unknown email, and safe handling of malformed stored password hashes.
+Review fixes: added per-IP login rate limiting (10/min), constant-time credential verification via dummy bcrypt hash on unknown email, and safe handling of malformed stored password hashes.
 
 ## Files Changed
 

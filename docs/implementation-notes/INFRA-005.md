@@ -40,7 +40,7 @@ Non-production placeholders only — never use real secrets in the workflow. Set
 - `LLM_PROVIDER` — `openai`
 - `OPENAI_API_KEY` — `ci-fake-openai-key` (non-`sk-` prefix to avoid secret-scanner noise)
 
-## Security Hardening (Gate 4 fix cycle)
+## Security hardening (review fix cycle)
 
 - Added workflow-level `permissions: contents: read` (least-privilege `GITHUB_TOKEN`)
 - Renamed dummy `OPENAI_API_KEY` from `sk-test` to `ci-fake-openai-key`

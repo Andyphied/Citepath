@@ -74,7 +74,7 @@ Docker integration (optional):
 pytest tests/integration/test_ingestion_usage_events.py -v
 ```
 
-## Fix Cycle 1 (Gate 4)
+## Fix cycle
 
 **Review finding:** Unrelated `stories/doc-007-document-status-display.md` completion marker was mixed into the USAGE-002 working tree.
 

@@ -38,7 +38,7 @@ Configuration:
 | Alternative | Why not selected |
 |-------------|------------------|
 | **Synchronous ingestion** | Blocks HTTP; poor UX for PDFs; violates ING stories |
-| **RQ (Redis Queue)** | Simpler but less feature-rich retries and monitoring; Celery preferred for portfolio "production" narrative |
+| **RQ (Redis Queue)** | Simpler but less feature-rich retries and monitoring; Celery preferred for production-style job processing |
 | **Serverless queues (SQS + Lambda)** | Split runtime from monolith; cold start; local dev friction |
 | **Kafka** | Massive ops overhead for single ingestion queue |
 | **Cron-based polling** | Higher latency, poor retry semantics, wastes DB polls |

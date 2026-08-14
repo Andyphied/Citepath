@@ -71,7 +71,7 @@ Implemented JWT authentication middleware via FastAPI `Depends(get_current_user)
 - Non-Bearer auth schemes (e.g. raw token without scheme) are rejected as `unauthorized`/`token_invalid`.
 - AUTH-006 will unify error envelope across all API modules; auth middleware errors already use the target shape.
 
-## Gate 3 Fix (Step 4)
+## Review fixes
 
 **M1 — Require `exp` claim in JWT decode:** Added `options={"require": ["exp", "sub"]}` to `jwt.decode` in `decode_access_token`. Tokens signed with the correct secret but omitting `exp` (or `sub`) are rejected via PyJWT's required-claim validation and surfaced as `TokenInvalidError` / HTTP 401 `token_invalid`.
 

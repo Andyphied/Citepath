@@ -50,7 +50,7 @@ Delivered the Phase 4 agent core loop: start investigation API, JSON-planning or
 
 ## Decisions Made
 
-### Fix cycle (Gate 3 → Step 4)
+### Review fix cycle
 
 1. **`AgentOrchestrationError` → HTTP 503** with stable `code=agent_orchestration_failed` and generic message (no internal detail). Registered in `main.py` alongside other agent handlers.
 2. **Tool failure sanitization:** persist/return only `{"error":"invalid_arguments"}` / `{"error":"execution_failed"}` / `{"error":"unknown_tool"}` — never `str(exc)` or Pydantic `exc.errors()`.
@@ -71,7 +71,7 @@ Delivered the Phase 4 agent core loop: start investigation API, JSON-planning or
 - **AUDIT-006:** Agent run audit events
 - **ADR-006:** Delimiter wrapping for tool observations (deferred; non-blocking)
 
-## Step 5b Platform Follow-Up
+## Platform follow-up
 
 ### CI coverage (no workflow change)
 
@@ -103,6 +103,6 @@ when writing revision `003_add_embedding_usage_operations` (34 chars) into `alem
 | `pytest tests/unit/test_agent_*.py -q` | **12 passed** |
 | `pytest tests/api/test_agent_runs.py tests/security/test_agent_workspace_isolation.py -v` (Docker / testcontainers) | **8 passed** |
 
-### Observed (deferred — not Step 5b)
+### Observed (deferred)
 
-- SAWarning cartesian product in `AgentRepository` tool-call count/list queries (`agent_runs` × `agent_tool_calls`) — product fix for story-implementer if desired; tests still pass.
+- SAWarning cartesian product in `AgentRepository` tool-call count/list queries (`agent_runs` × `agent_tool_calls`) — product fix if desired; tests still pass.

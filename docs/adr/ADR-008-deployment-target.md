@@ -33,7 +33,7 @@ Stack:
 - Native S3 integration for document storage
 - RDS pgvector is well documented
 - Same Docker image local and cloud — high parity
-- Strong portfolio signal for AWS infrastructure skills
+- Strong signal for AWS infrastructure skills
 
 **Negative:**
 - AWS cost ~$60–80/mo minimum while running
@@ -45,9 +45,9 @@ Stack:
 | Alternative | Why not selected |
 |-------------|------------------|
 | **GCP Cloud Run** | Excellent for stateless API; worker + Redis + pgvector slightly more fragmented on GCP for this layout; either cloud acceptable — AWS chosen for S3/RDS cohesion |
-| **Heroku / Render PaaS** | Less Terraform/portfolio depth; weaker IaC story |
+| **Heroku / Render PaaS** | Less Terraform depth; weaker IaC story |
 | **Kubernetes (EKS/GKE)** | Over-engineered for MVP per architecture principles |
-| **Single EC2 instance** | Poor habit for portfolio; manual scaling |
+| **Single EC2 instance** | Poor operational habit; manual scaling |
 
 ## Implementation Notes
 

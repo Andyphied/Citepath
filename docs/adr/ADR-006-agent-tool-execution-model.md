@@ -28,7 +28,7 @@ Forbidden: shell, file write, delete, deploy, ticket create, arbitrary code exec
 - Bounded blast radius — worst case is read excess data within workspace user already accesses
 - Clear audit trail per tool invocation
 - CI can test rejection of unknown tools deterministically
-- Aligns with PRD agent rules and portfolio security narrative
+- Aligns with PRD agent rules and the security narrative
 
 **Negative:**
 - Agent cannot adapt tools without code deploy

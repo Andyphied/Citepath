@@ -17,7 +17,7 @@ The MVP proves the core product loop:
 
 It demonstrates production-style backend architecture: authentication, RBAC, workspace isolation, background ingestion, token/cost tracking, audit logs, observability, and local/cloud deployment readiness.
 
-**Success bar:** A portfolio-ready demo where a user can register, create a workspace, upload Northstar Cloud demo documents, ask an incident question, receive cited answers, run an agent investigation, and review ingestion status and token usage — with no cross-workspace data leakage.
+**Success bar:** A working demo where a user can register, create a workspace, upload Northstar Cloud demo documents, ask an incident question, receive cited answers, run an agent investigation, and review ingestion status and token usage — with no cross-workspace data leakage.
 
 ---
 
@@ -31,7 +31,7 @@ It demonstrates production-style backend architecture: authentication, RBAC, wor
 | A4 | File storage is local filesystem or S3-compatible object storage; abstracted behind an interface. |
 | A5 | Background jobs run via Redis + Celery (or RQ); one ingestion worker is enough for MVP. |
 | A6 | Frontend is minimal (Next.js or API-first with Swagger); polish is secondary to backend credibility. |
-| A7 | Demo dataset ("Northstar Cloud") is seeded for portfolio demos; not required for every environment. |
+| A7 | Demo dataset ("Northstar Cloud") is seeded for local demos; not required for every environment. |
 | A8 | API rate limiting is basic (per-user/per-workspace); no billing or quota enforcement. |
 | A9 | Answers are non-streaming; full response returned in one API call. |
 | A10 | Agent tools are read-only and workspace-scoped; no external API calls beyond LLM/embedding providers. |
@@ -164,7 +164,7 @@ Login enables returning users to resume work and attaches identity to all subseq
 
 **Product Rationale**
 
-Basic session hygiene for portfolio credibility; even with stateless JWT, logout documents intent.
+Basic session hygiene; even with stateless JWT, logout documents intent.
 
 **Functional Requirements**
 
@@ -427,7 +427,7 @@ RBAC is incomplete without role updates and removal; required for security demos
 
 **Product Rationale**
 
-Permission enforcement is mandatory for multi-tenant trust and portfolio security narrative.
+Permission enforcement is mandatory for multi-tenant trust and the security story.
 
 **Functional Requirements**
 
@@ -1205,7 +1205,7 @@ Retrieval-before-generation is the defining RAG pattern.
 
 **Product Rationale**
 
-Grounding reduces hallucination risk; portfolio-critical behavior.
+Grounding reduces hallucination risk; core product behavior.
 
 **Functional Requirements**
 
@@ -1722,7 +1722,7 @@ Dollar estimates make usage tangible in demos without building billing.
 
 **Product Rationale**
 
-Admin dashboard and portfolio demo need aggregate visibility.
+Admin dashboard and demo need aggregate visibility.
 
 **Functional Requirements**
 
@@ -2277,7 +2277,7 @@ Demo/debug requirement when ingestion appears hung.
 
 **Product Rationale**
 
-Local reproducibility is portfolio table stakes.
+Local reproducibility is table stakes.
 
 **Functional Requirements**
 
@@ -2361,7 +2361,7 @@ Alembic migrations show production database discipline.
 
 **Product Rationale**
 
-Demo dataset unlocks portfolio scenarios without manual upload.
+Demo dataset unlocks demo scenarios without manual upload.
 
 **Functional Requirements**
 
@@ -2389,7 +2389,7 @@ Demo dataset unlocks portfolio scenarios without manual upload.
 
 **Product Rationale**
 
-CI demonstrates engineering maturity for portfolio reviewers.
+CI catches regressions on every push and pull request.
 
 **Functional Requirements**
 
@@ -2416,7 +2416,7 @@ CI demonstrates engineering maturity for portfolio reviewers.
 
 **Product Rationale**
 
-Cloud readiness without full production hardening is sufficient for MVP portfolio.
+Cloud readiness without full production hardening is sufficient for the MVP.
 
 **Functional Requirements**
 
@@ -2441,7 +2441,7 @@ Cloud readiness without full production hardening is sufficient for MVP portfoli
 
 **User Story**
 
-> As a portfolio reviewer, I want clear README and architecture docs, so that I understand design decisions quickly.
+> As a new contributor, I want clear README and architecture docs, so that I understand design decisions quickly.
 
 **Product Rationale**
 
@@ -2547,7 +2547,7 @@ Portfolio demos need a visual surface; a shared app shell makes every feature pa
 
 **Product Rationale**
 
-Auth is the first step in every demo and portfolio screenshot set; a dedicated login screen establishes product credibility.
+Auth is the first step in every demo; a dedicated login screen establishes product credibility.
 
 **Functional Requirements**
 
@@ -2575,7 +2575,7 @@ Auth is the first step in every demo and portfolio screenshot set; a dedicated l
 
 **Priority:** P1  
 **Dependencies:** UI-001, AUTH-001, AUTH-002, AUTH-003, AUTH-004, AUTH-006  
-**Notes for Engineering:** Login page is a primary portfolio screenshot — center the form, use product logo/title. No OAuth or password reset in MVP.
+**Notes for Engineering:** Login page is a primary demo screen — center the form, use product logo/title. No OAuth or password reset in MVP.
 
 ---
 
@@ -2587,7 +2587,7 @@ Auth is the first step in every demo and portfolio screenshot set; a dedicated l
 
 **Product Rationale**
 
-Document upload with live status badges is a core portfolio screenshot — it proves the workspace → upload → index loop.
+Document upload with live status badges is a core demo screen — it proves the workspace → upload → index loop.
 
 **Functional Requirements**
 
@@ -2628,7 +2628,7 @@ Document upload with live status badges is a core portfolio screenshot — it pr
 
 **Product Rationale**
 
-The Q&A screen with citations is the hero portfolio screenshot — it shows the product's core value visually.
+The Q&A screen with citations is the hero demo screen — it shows the product's core value visually.
 
 **Functional Requirements**
 
@@ -2815,7 +2815,7 @@ flowchart TD
 
 **Parallelizable after WS:** OBS, INFRA (partial), AUDIT (after events exist), USAGE (with first LLM call)
 
-**UI epic (Epic 13):** Implement after Phase 4 backend stories complete; UI-001 through UI-006 map 1:1 to portfolio screenshots (login, documents, Q&A, agent, admin).
+**UI epic (Epic 13):** Implement after Phase 4 backend stories complete; UI-001 through UI-006 map 1:1 to demo screens (login, documents, Q&A, agent, admin).
 
 ---
 

@@ -87,7 +87,7 @@ Integration tests require Docker (testcontainers + Python `docker` SDK); skipped
 - **INFRA-005:** Wire `alembic upgrade head` before pytest in GitHub Actions
 - **Domain stories:** Additional migrations as features land (documents, RAG, agents)
 
-## Step 2 Close-out Verification (2026-07-06)
+## Close-out verification (2026-07-06)
 
 - `alembic history` / `alembic heads`: linear chain to `002_add_workspace_slug (head)` ✓
 - Empty pgvector DB: `upgrade head` creates all 12 tables + `alembic_version`, pgvector extension, HNSW index, `workspaces.slug` ✓
@@ -98,7 +98,7 @@ Integration tests require Docker (testcontainers + Python `docker` SDK); skipped
 - `citepath-migrate` image: `alembic current` reports `002_add_workspace_slug (head)` ✓
 - Full `docker compose up --build`: build succeeded; stack start blocked by host port 5432 conflict (environment-specific)
 
-## Step 5b Platform Follow-up (2026-07-06)
+## Platform follow-up (2026-07-06)
 
 Hardened migration/integration test coverage per code review notes (no schema or migration changes):
 

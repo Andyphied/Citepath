@@ -58,10 +58,10 @@ Source: [diagrams/deployment-diagram.mmd](./diagrams/deployment-diagram.mmd)
 
 **Justification:**
 - Same Docker image for API and worker (different entrypoint) — fits ECS task definitions cleanly
-- RDS PostgreSQL supports pgvector; mature ops path for portfolio demos
+- RDS PostgreSQL supports pgvector; mature ops path for demos
 - S3 native for document storage
 - No cluster node management (vs EKS)
-- Cloud Run viable alternative; ECS chosen for tighter S3/IAM/RDS integration common in engineering portfolios
+- Cloud Run viable alternative; ECS chosen for tighter S3/IAM/RDS integration common in this stack
 
 ## Local Development Architecture
 

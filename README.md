@@ -2,13 +2,15 @@
 
 Multi-tenant, workspace-scoped **RAG** and **incident investigation** backend for engineering teams. Upload runbooks and incident notes, ask grounded questions with citations, and run a controlled tool-based agent — with hard workspace isolation, RBAC, usage tracking, and audit logs.
 
+Released under the [MIT License](LICENSE).
+
 **MVP product loop**
 
 ```text
 workspace → document upload → ingestion → vector search → grounded answer → agent investigation → usage visibility
 ```
 
-Portfolio demo tenant: **Northstar Cloud**.
+Demo tenant: **Northstar Cloud**.
 
 ---
 
@@ -249,7 +251,7 @@ Security tests live under `tests/security/` (Docker/testcontainers).
 | Decision | Why (short) | Details |
 |----------|-------------|---------|
 | **pgvector in Postgres** vs dedicated vector DB | One store for metadata + vectors, ACID deletes/re-index, strong `workspace_id` filter in the same SQL; corpus is demo-scale | [ADR-002](docs/adr/ADR-002-vector-store-choice.md) |
-| **Stateless HS256 JWT** | Simple portfolio auth; no SSO; logout is client discard (no Redis blocklist in MVP) | [docs/09-security-and-rbac.md](docs/09-security-and-rbac.md) |
+| **Stateless HS256 JWT** | Simple demo auth; no SSO; logout is client discard (no Redis blocklist in MVP) | [docs/09-security-and-rbac.md](docs/09-security-and-rbac.md) |
 | **Token chunking (~1000 / 150 overlap)** | Balances retrieval precision vs context window; paragraph-aware with heading prefixes | [docs/07-rag-architecture.md](docs/07-rag-architecture.md), [ING-003](docs/implementation-notes/ING-003.md) |
 | **Modular monolith + Celery** | Clear module boundaries without microservice ops tax; async ingestion only | [ADR-001](docs/adr/ADR-001-backend-architecture-style.md), [ADR-004](docs/adr/ADR-004-background-job-processing.md) |
 | **Allow-listed agent tools** | Controlled investigation; no shell, no mutations, no external remediation | [ADR-006](docs/adr/ADR-006-agent-tool-execution-model.md) |
@@ -263,7 +265,7 @@ Security tests live under `tests/security/` (Docker/testcontainers).
 - OpenAPI JSON: http://localhost:8000/openapi.json
 
 `/docs`, `/redoc`, and `/openapi.json` are **local-demo** surfaces — leave them
-on localhost for portfolio use; restrict at the network edge before any shared
+on localhost for local demo use; restrict at the network edge before any shared
 or internet-facing deploy. Swagger UI enables `persistAuthorization` (JWT
 retained in the browser until you clear it).
 
@@ -290,7 +292,7 @@ Citepath records token usage on every LLM and embedding call and attaches an
 `estimated_cost_usd` using a static price table in
 `app/modules/usage/cost_calculator.py` (USD per 1K tokens, blended per model).
 
-These figures are **approximate portfolio/demo estimates, not invoices**. Prefer
+These figures are **approximate demo estimates, not invoices**. Prefer
 provider invoices for real spend.
 
 Admin summary (Owner/Admin): `GET /workspaces/{workspace_id}/admin/usage`  
@@ -318,3 +320,9 @@ Also: `documents-overview`, `ingestion-jobs`, `recent-questions`, `failed-jobs`,
 ## Out of scope (MVP)
 
 Slack/GitHub/Notion integrations, SSO, billing, streaming answers, Kubernetes, dedicated vector DB migration, real external remediation — see [docs/01-system-overview.md](docs/01-system-overview.md).
+
+---
+
+## License
+
+Citepath is released under the [MIT License](LICENSE).

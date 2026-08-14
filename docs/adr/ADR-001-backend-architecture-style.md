@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-Citepath MVP requires a backend that supports REST APIs, multi-tenant RBAC, async document ingestion, RAG queries, agent orchestration, and production concerns (migrations, tests, observability). The team is small and the MVP must ship a credible portfolio demo without operational overhead from distributed systems.
+Citepath MVP requires a backend that supports REST APIs, multi-tenant RBAC, async document ingestion, RAG queries, agent orchestration, and production concerns (migrations, tests, observability). The team is small and the MVP must ship a credible demo without operational overhead from distributed systems.
 
 We must choose an architecture style and primary backend framework.
 

@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-AI calls are the primary variable cost and debugging surface. MVP stories USAGE-001–004 and admin dashboard require visibility into LLM and embedding consumption per workspace. Production-aware portfolios must show cost awareness.
+AI calls are the primary variable cost and debugging surface. MVP stories USAGE-001–004 and admin dashboard require visibility into LLM and embedding consumption per workspace. Production-aware systems must show cost awareness.
 
 ## Decision
 

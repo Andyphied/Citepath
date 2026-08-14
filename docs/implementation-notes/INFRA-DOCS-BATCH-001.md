@@ -2,8 +2,8 @@
 
 Batch: **INFRA-007** (README & architecture docs) + **INFRA-008** (OpenAPI polish)
 
-**Status:** Step 4 fix loop applied (after Gate 3 REQUEST CHANGES) — stories remain
-`in_progress` until Gate 6. Do **not** mark completed.
+**Status:** Review fix cycle applied — stories remain
+`in_progress` until accepted. Do **not** mark completed.
 
 ## Summary
 
@@ -14,14 +14,14 @@ architecture package (ADRs + Mermaid). Polished FastAPI OpenAPI metadata so
 `/docs` and `/redoc` document Bearer JWT, MVP routes/schemas, and examples on
 query + agent-run.
 
-## Fix Loop (Gate 3 → Step 4)
+## Review fix cycle
 
 | Prior must-fix | How fixed | File evidence |
 |-----------------|-----------|---------------|
 | README treated LLM key as optional for under-30-min live answers | Step **0** requires a **real** `OPENAI_API_KEY` (or Anthropic) before seed + query; placeholder called out as boot-only | `README.md` Quick start §0–§3; `.env.example` LLM comments |
 | Unclear how to set key in Compose / recreate | Compose interpolates `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` / `LLM_PROVIDER` from `.env`/shell; README documents `docker compose up -d --force-recreate api` | `docker-compose.yml` `x-app-environment`; `README.md` §0 |
 | Seed vs Celery worker unclear | Documented sync in-process ingestion (`process_ingestion_job`); Celery worker **not** required for seed | `README.md` §2; Known Limitations below |
-| Architecture package linked but untracked on clean checkout | Included linked package in this batch’s deliverable set (docs index, 01–03, 07, 13, linked ADRs, diagrams) | Files Changed table; untracked paths now in batch scope for Gate 5 commit |
+| Architecture package linked but untracked on clean checkout | Included linked package in this batch’s deliverable set (docs index, 01–03, 07, 13, linked ADRs, diagrams) | Files Changed table; untracked paths now in batch scope for commit |
 | Python version said 3.12 vs image/pyproject 3.11 | Aligned to **3.11+** / `python:3.11-slim` | `README.md` Architecture table; `docs/README.md`; `docs/adr/ADR-001-*.md` |
 | Flower no-auth / local-only warning missing | Restored next to Flower URL | `README.md` service table |
 | Demo user/password not labeled local-only | Labeled **local demo credentials only**; change before shared/internet-facing deploy | `README.md` §2 |
@@ -74,7 +74,7 @@ query + agent-run.
 
 | File | Purpose |
 |------|---------|
-| `README.md` | Reviewer quick start + security/tradeoffs (Step 4 fixes) |
+| `README.md` | Reviewer quick start + security/tradeoffs (review fixes) |
 | `.env.example` | Chunk/embedding vars + real LLM key for demo |
 | `docker-compose.yml` | Interpolate LLM key/provider from `.env`/shell |
 | `docs/README.md` | Architecture index; Python 3.11+ |
@@ -111,12 +111,12 @@ query + agent-run.
 - OpenAPI examples use placeholder UUIDs; not live Northstar IDs.
 - Flower has no auth — local-only; do not expose beyond localhost.
 - Terraform / INFRA-006 intentionally out of scope for this batch.
-- Stories not marked `completed` (Gate 6).
+- Stories not marked `completed`.
 
 ## Follow-up Items
 
-- Gate 3 re-review after this Step 4 fix cycle (mandatory).
-- Human commit at Gate 5 (include architecture package files listed above).
+- Re-review after this fix cycle.
+- Commit should include architecture package files listed above.
 - INFRA-006 Terraform scaffold (separate story).
 - Optional: add README smoke script wrapping login → query.
 

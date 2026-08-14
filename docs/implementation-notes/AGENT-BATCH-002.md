@@ -82,7 +82,7 @@ docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm test \
   pytest tests/security/test_agent_workspace_isolation.py -q
 ```
 
-## Fix Cycle Notes (Gate 3 → Gate 4)
+## Review fix cycle
 
 **Finding:** `_normalize_steps` trusted LLM `grounded=true` when `source_document_id` was null or not in citation set, so generic/unsourced steps could be presented as internal facts.
 

@@ -3,6 +3,7 @@ name = "citepath"
 version = "0.1.0"
 description = "Citepath — workspace-scoped RAG and incident investigation"
 readme = "README.md"
+license = { file = "LICENSE" }
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.109.0",

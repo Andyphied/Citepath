@@ -65,4 +65,4 @@ All handlers delegate to `app.modules.observability.errors.error_response()` (OB
 ## Follow-up Items
 
 - Optional: global `HTTPException` → standard envelope if future code raises FastAPI `HTTPException`.
-- Gate 6: mark story `completed` after review/commit.
+- Mark story `completed` after review/commit.

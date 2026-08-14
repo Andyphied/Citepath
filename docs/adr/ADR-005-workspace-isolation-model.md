@@ -43,7 +43,7 @@ For **workspace membership** endpoints (`GET /workspaces/{workspace_id}`, future
 |-------------|------------------|
 | **DB row-level security (RLS) only** | Powerful but harder local dev/debug; team must still pass context; use as future enhancement |
 | **Separate database per workspace** | Absurd ops cost for MVP |
-| **Application-only filtering** | Single missed query causes leakage; insufficient for portfolio security story |
+| **Application-only filtering** | Single missed query causes leakage; insufficient for the security story |
 | **API gateway tenancy** | Does not protect worker tasks or direct DB access |
 
 ## Implementation Notes

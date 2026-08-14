@@ -57,7 +57,7 @@ Delivered tool-call listing for agent runs (AGENT-009) and `agent.run_completed`
 
 1. **Event type `agent.run_completed`** (dotted) — matches AUDIT-006 story and existing document audit style (`document.deleted`); architecture docs previously used `agent_run_completed` and were updated.
 2. **Admin/Owner cross-user visibility** for tool-calls and GET run — aligns with `docs/06-api-design.md`; Member/Viewer remain creator-only.
-3. **Emit audit on failed runs** — story AC mentions completed; Gate 1 scope required failed completion too; `status` in metadata distinguishes outcomes.
+3. **Emit audit on failed runs** — story AC mentions completed; this story also emits audit on failed completion; `status` in metadata distinguishes outcomes.
 4. **No rebuild of tool-call logging** — `ToolExecutor` truncation/latency persistence unchanged.
 
 ## Known Limitations

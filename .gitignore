@@ -29,3 +29,6 @@ htmlcov/
 # Local uploads (dev)
 uploads/
 .cursor/
+
+# Local scratch (not part of the public tree)
+tt.md

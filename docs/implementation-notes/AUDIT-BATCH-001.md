@@ -107,6 +107,6 @@ Completed missing audit emitters for document upload and member role changes, ha
 
 ## Follow-up Items
 
-- Gate 6: mark AUDIT-001/004/007 (and verified 002/003/005) `completed` after review + commit.
+- Mark AUDIT-001/004/007 (and verified 002/003/005) `completed` after review + commit.
 - Optionally propagate `ip_address` from document upload / member PATCH routes.
 - AUDIT-005 rate-limit hardening if abuse becomes a concern.

@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-MVP assumes one active LLM provider at a time (OpenAI or Anthropic, assumption A2) but the PRD mentions both for portfolio credibility. Hard-coding OpenAI calls in RAG and agent modules would complicate testing, provider switching, and cost tracking normalization.
+MVP assumes one active LLM provider at a time (OpenAI or Anthropic, assumption A2) but the PRD mentions both so the product can switch providers. Hard-coding OpenAI calls in RAG and agent modules would complicate testing, provider switching, and cost tracking normalization.
 
 ## Decision
 
