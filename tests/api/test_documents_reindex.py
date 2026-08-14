@@ -24,10 +24,10 @@ from app.main import create_app
 from app.modules.audit.models import AuditLog
 from app.modules.documents.models import Document
 from app.modules.documents.repository import DocumentRepository
+from app.modules.ingestion.chunker import EmbeddedChunk
 from app.modules.ingestion.job_repository import IngestionJobRepository
 from app.modules.ingestion.models import DocumentChunk, IngestionJob
 from app.modules.ingestion.repository import IngestionRepository
-from app.modules.ingestion.chunker import EmbeddedChunk
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 EMBEDDING_DIMENSIONS = 1536

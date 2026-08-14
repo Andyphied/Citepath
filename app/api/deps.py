@@ -10,17 +10,20 @@ from sqlalchemy.orm import Session
 
 from app.infrastructure.config import Settings, get_settings
 from app.infrastructure.db.session import get_db
-from app.infrastructure.rate_limit import (
-    RateLimitedError,
-    check_login_rate_limit,
-)
 from app.infrastructure.llm.factory import (
     create_completion_provider,
     create_embedding_provider,
 )
+from app.infrastructure.rate_limit import (
+    RateLimitedError,
+    check_login_rate_limit,
+)
+from app.infrastructure.storage import create_storage_backend
+from app.modules.admin.service import AdminService
+from app.modules.agents.repository import AgentRepository
+from app.modules.agents.service import AgentService
 from app.modules.audit.repository import AuditRepository
 from app.modules.audit.service import AuditService
-from app.modules.admin.service import AdminService
 from app.modules.auth.exceptions import TokenInvalidError, UnauthorizedError
 from app.modules.auth.jwt import decode_access_token
 from app.modules.auth.repository import AuthRepository
@@ -30,6 +33,11 @@ from app.modules.documents.service import DocumentService
 from app.modules.ingestion.job_repository import IngestionJobRepository
 from app.modules.ingestion.repository import IngestionRepository
 from app.modules.ingestion.service import IngestionService
+from app.modules.rag.conversation_service import ConversationService
+from app.modules.rag.query_service import RagQueryService
+from app.modules.rag.repository import RAGRepository
+from app.modules.retrieval.service import RetrievalService
+from app.modules.usage.service import UsageService
 from app.modules.users.models import User
 from app.modules.users.repository import UserRepository
 from app.modules.workspaces.context import WorkspaceContext
@@ -37,14 +45,6 @@ from app.modules.workspaces.exceptions import WorkspaceForbiddenError
 from app.modules.workspaces.permissions import PermissionAction, PermissionService
 from app.modules.workspaces.repository import WorkspaceRepository
 from app.modules.workspaces.service import WorkspaceService
-from app.infrastructure.storage import create_storage_backend
-from app.modules.rag.conversation_service import ConversationService
-from app.modules.rag.query_service import RagQueryService
-from app.modules.rag.repository import RAGRepository
-from app.modules.agents.repository import AgentRepository
-from app.modules.agents.service import AgentService
-from app.modules.retrieval.service import RetrievalService
-from app.modules.usage.service import UsageService
 
 DbSession = Annotated[Session, Depends(get_db)]
 

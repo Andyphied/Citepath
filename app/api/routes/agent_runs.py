@@ -13,7 +13,6 @@ from app.modules.agents.schemas import (
     AgentToolCallListResponse,
 )
 
-
 router = APIRouter(prefix="/workspaces", tags=["agent-runs"])
 
 _AGENT_RUN_EXAMPLES = {

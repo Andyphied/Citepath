@@ -13,6 +13,7 @@ from app.api.agent_errors import (
     agent_run_not_found_handler,
     empty_objective_handler,
 )
+from app.api.audit_errors import invalid_audit_range_handler
 from app.api.auth_errors import (
     duplicate_email_handler,
     invalid_credentials_handler,
@@ -48,7 +49,6 @@ from app.api.routes import (
     queries,
     workspaces,
 )
-from app.api.audit_errors import invalid_audit_range_handler
 from app.api.usage_errors import invalid_usage_range_handler
 from app.api.workspace_errors import (
     already_member_handler,
@@ -67,6 +67,7 @@ from app.modules.agents.exceptions import (
     AgentRunNotFoundError,
     EmptyObjectiveError,
 )
+from app.modules.audit.exceptions import InvalidAuditRangeError
 from app.modules.auth.exceptions import (
     DuplicateEmailError,
     InvalidCredentialsError,
@@ -97,7 +98,6 @@ from app.modules.rag.exceptions import (
     EmptyQuestionError,
 )
 from app.modules.retrieval.exceptions import QueryEmbeddingError
-from app.modules.audit.exceptions import InvalidAuditRangeError
 from app.modules.usage.exceptions import InvalidUsageRangeError
 from app.modules.workspaces.exceptions import (
     AlreadyMemberError,
@@ -108,7 +108,6 @@ from app.modules.workspaces.exceptions import (
     UserNotFoundError,
     WorkspaceForbiddenError,
 )
-
 
 OPENAPI_TAGS = [
     {"name": "health", "description": "Liveness and readiness probes"},

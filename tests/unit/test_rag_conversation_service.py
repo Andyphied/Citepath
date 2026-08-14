@@ -5,13 +5,12 @@ from uuid import uuid4
 
 import pytest
 
-from app.infrastructure.db.enums import ConversationMode, MessageRole
+from app.infrastructure.db.enums import ConversationMode, MessageRole, WorkspaceRole
 from app.modules.rag.conversation_service import ConversationService
 from app.modules.rag.exceptions import ConversationNotFoundError
 from app.modules.rag.models import Conversation, Message
 from app.modules.workspaces.context import WorkspaceContext
 from app.modules.workspaces.permissions import PermissionService
-from app.infrastructure.db.enums import WorkspaceRole
 
 
 class StubRAGRepository:

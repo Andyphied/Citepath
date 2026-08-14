@@ -14,6 +14,8 @@ try:
 except ImportError:  # pragma: no cover - optional dev dependency
     PostgresContainer = None
 
+from sqlalchemy import select
+
 from app.infrastructure.config import reset_settings_cache
 from app.infrastructure.db.enums import ConversationMode, DocumentStatus, MessageRole
 from app.infrastructure.db.session import reset_db_engine
@@ -26,8 +28,6 @@ from app.modules.rag.exceptions import ConversationNotFoundError
 from app.modules.rag.query_service import RagQueryService
 from app.modules.rag.repository import RAGRepository
 from app.modules.retrieval.service import RetrievalService
-from sqlalchemy import select
-
 from app.modules.usage.models import UsageEvent
 from app.modules.workspaces.context import WorkspaceContext
 from app.modules.workspaces.permissions import PermissionService

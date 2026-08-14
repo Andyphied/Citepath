@@ -15,7 +15,6 @@ from app.modules.ingestion.repository import IngestionRepository
 from app.modules.rag.citation_mapper import build_citations, citations_to_metadata
 from app.modules.rag.completion import complete_rag_answer
 from app.modules.rag.exceptions import (
-    ChatCompletionError,
     ConversationNotFoundError,
     EmptyQuestionError,
 )
@@ -32,7 +31,7 @@ from app.modules.rag.schemas import (
     QueryResponse,
 )
 from app.modules.retrieval.exceptions import EmptyQueryError
-from app.modules.retrieval.schemas import RetrievedChunk, RetrievalFilters
+from app.modules.retrieval.schemas import RetrievalFilters, RetrievedChunk
 from app.modules.retrieval.service import RetrievalService
 from app.modules.usage.service import UsageService
 from app.modules.workspaces.context import WorkspaceContext

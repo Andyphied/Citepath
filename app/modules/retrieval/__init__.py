@@ -3,8 +3,8 @@
 from app.modules.retrieval.exceptions import EmptyQueryError, QueryEmbeddingError
 from app.modules.retrieval.schemas import (
     DEFAULT_TOP_K,
-    RetrievedChunk,
     RetrievalSearchResult,
+    RetrievedChunk,
 )
 from app.modules.retrieval.service import RetrievalService
 

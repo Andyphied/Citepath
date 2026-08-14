@@ -14,6 +14,8 @@ from app.modules.documents.repository import DocumentRepository
 from app.modules.ingestion.repository import SimilarChunkResult
 from app.modules.retrieval.embeddings import (
     QueryEmbeddingError as EmbeddingFailure,
+)
+from app.modules.retrieval.embeddings import (
     embed_query_text,
 )
 from app.modules.retrieval.exceptions import (
@@ -26,10 +28,10 @@ from app.modules.retrieval.schemas import (
     CONTENT_PREVIEW_MAX_LENGTH,
     DEFAULT_TOP_K,
     DocumentMetadata,
-    RetrievedChunk,
     RetrievalFilters,
     RetrievalSearchInput,
     RetrievalSearchResult,
+    RetrievedChunk,
 )
 from app.modules.usage.service import UsageService
 

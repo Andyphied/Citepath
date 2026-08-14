@@ -5,13 +5,12 @@ from uuid import uuid4
 
 import pytest
 
-from app.infrastructure.db.enums import AgentToolCallStatus
+from app.infrastructure.db.enums import AgentToolCallStatus, WorkspaceRole
 from app.modules.agents.exceptions import UnknownToolError
 from app.modules.agents.schemas import SearchKnowledgeBaseArgs
 from app.modules.agents.tool_executor import ToolExecutor
 from app.modules.agents.tool_registry import RegisteredTool
 from app.modules.workspaces.context import WorkspaceContext
-from app.infrastructure.db.enums import WorkspaceRole
 
 
 @pytest.fixture

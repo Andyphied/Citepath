@@ -24,7 +24,6 @@ from app.modules.auth.repository import AuthRepository
 from app.modules.documents.repository import DocumentRepository
 from app.modules.ingestion.chunker import EmbeddedChunk
 from app.modules.ingestion.repository import IngestionRepository
-from app.modules.rag.prompt_builder import MAX_HISTORY_TURNS
 from app.modules.rag.query_service import RagQueryService
 from app.modules.rag.repository import RAGRepository
 from app.modules.retrieval.service import RetrievalService
