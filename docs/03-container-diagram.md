@@ -1,6 +1,6 @@
 # Container Diagram
 
-C4-style container view of the AtlasOps AI MVP deployable units.
+C4-style container view of the Citepath MVP deployable units.
 
 ## Containers
 
@@ -93,8 +93,8 @@ Celery broker only for MVP. Result backend optional (prefer DB job status over C
 
 | Container | Local | Cloud |
 |-----------|-------|-------|
-| API | `docker compose` service `api` | ECS Fargate service `atlasops-api` |
-| Worker | `docker compose` service `worker` | ECS Fargate service `atlasops-worker` |
+| API | `docker compose` service `api` | ECS Fargate service `citepath-api` |
+| Worker | `docker compose` service `worker` | ECS Fargate service `citepath-worker` |
 | PostgreSQL | `postgres` container | RDS PostgreSQL |
 | Redis | `redis` container | ElastiCache Redis |
 | Storage | Docker volume | S3 bucket |

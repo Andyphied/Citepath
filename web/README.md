@@ -1,4 +1,4 @@
-# AtlasOps AI — Web App
+# Citepath — Web App
 
 Minimal Next.js (App Router) demo UI scaffold (**UI-001**).
 
@@ -21,7 +21,7 @@ Open http://localhost:3000
 
 | Variable | Purpose | Default |
 |----------|---------|---------|
-| `NEXT_PUBLIC_API_URL` | AtlasOps API base URL | `http://localhost:8000` |
+| `NEXT_PUBLIC_API_URL` | Citepath API base URL | `http://localhost:8000` |
 
 The API must allow the web origin (development defaults to `http://localhost:3000` via `CORS_ORIGINS` / `ENVIRONMENT=development`).
 
@@ -37,7 +37,7 @@ Web: http://localhost:3000 · API: http://localhost:8000
 
 ## Auth (scaffold)
 
-Protected routes redirect to `/login` when the `atlasops_token` cookie is missing. Full login/register is **UI-002**. Until then, the login page accepts a pasted JWT from `POST /auth/login`.
+Protected routes redirect to `/login` when the `citepath_token` cookie is missing. Full login/register is **UI-002**. Until then, the login page accepts a pasted JWT from `POST /auth/login`.
 
 ## Workspace context
 

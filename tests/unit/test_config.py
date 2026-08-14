@@ -11,7 +11,7 @@ def _set_minimal_valid_env(monkeypatch: pytest.MonkeyPatch) -> None:
     """Set the minimum required environment variables for a valid Settings load."""
     monkeypatch.setenv(
         "DATABASE_URL",
-        "postgresql+psycopg2://user:pass@localhost:5432/atlasops",
+        "postgresql+psycopg2://user:pass@localhost:5432/citepath",
     )
     monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/0")
     monkeypatch.setenv("JWT_SECRET_KEY", "test-secret-key-for-jwt-signing")

@@ -13,7 +13,7 @@ from app.modules.auth.jwt import create_access_token, decode_access_token
 
 def _settings() -> Settings:
     return Settings(
-        DATABASE_URL="postgresql://user:pass@localhost:5432/atlasops",
+        DATABASE_URL="postgresql://user:pass@localhost:5432/citepath",
         REDIS_URL="redis://localhost:6379/0",
         JWT_SECRET_KEY="test-secret-key",
         STORAGE_BACKEND="local",

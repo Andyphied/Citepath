@@ -43,7 +43,7 @@ jobs:
       - name: Run unit tests
         run: pytest tests/unit -q
         env:
-          DATABASE_URL: postgresql://user:pass@localhost:5432/atlasops
+          DATABASE_URL: postgresql://user:pass@localhost:5432/citepath
           REDIS_URL: redis://localhost:6379/0
           JWT_SECRET_KEY: ci-test-secret-key
           STORAGE_BACKEND: local
@@ -92,7 +92,7 @@ jobs:
       - name: Run integration tests
         run: pytest tests/api tests/integration tests/security -q
         env:
-          DATABASE_URL: postgresql://user:pass@localhost:5432/atlasops
+          DATABASE_URL: postgresql://user:pass@localhost:5432/citepath
           REDIS_URL: redis://localhost:6379/0
           JWT_SECRET_KEY: ci-test-secret-key
           STORAGE_BACKEND: local

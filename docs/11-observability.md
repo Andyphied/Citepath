@@ -1,6 +1,6 @@
 # Observability
 
-Production-aware observability for AtlasOps AI MVP without heavy APM infrastructure.
+Production-aware observability for Citepath MVP without heavy APM infrastructure.
 
 ## Structured Logging
 

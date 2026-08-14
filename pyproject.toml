@@ -1,7 +1,7 @@
 [project]
-name = "atlasops"
+name = "citepath"
 version = "0.1.0"
-description = "AtlasOps AI — workspace-scoped RAG and incident investigation"
+description = "Citepath — workspace-scoped RAG and incident investigation"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

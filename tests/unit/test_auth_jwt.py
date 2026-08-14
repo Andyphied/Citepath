@@ -11,7 +11,7 @@ from app.modules.auth.jwt import create_access_token
 
 def test_create_access_token_includes_sub_exp_iat(minimal_env) -> None:
     settings = Settings(
-        DATABASE_URL="postgresql://user:pass@localhost:5432/atlasops",
+        DATABASE_URL="postgresql://user:pass@localhost:5432/citepath",
         REDIS_URL="redis://localhost:6379/0",
         JWT_SECRET_KEY="test-secret-key",
         STORAGE_BACKEND="local",

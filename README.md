@@ -1,4 +1,4 @@
-# AtlasOps AI
+# Citepath
 
 Multi-tenant, workspace-scoped **RAG** and **incident investigation** backend for engineering teams. Upload runbooks and incident notes, ask grounded questions with citations, and run a controlled tool-based agent — with hard workspace isolation, RBAC, usage tracking, and audit logs.
 
@@ -286,7 +286,7 @@ Strategy: [docs/13-testing-strategy.md](docs/13-testing-strategy.md).
 
 ## Usage cost estimates
 
-AtlasOps records token usage on every LLM and embedding call and attaches an
+Citepath records token usage on every LLM and embedding call and attaches an
 `estimated_cost_usd` using a static price table in
 `app/modules/usage/cost_calculator.py` (USD per 1K tokens, blended per model).
 

@@ -1,6 +1,6 @@
-# AtlasOps AI — Architecture Documentation
+# Citepath — Architecture Documentation
 
-Architecture package for the **AtlasOps AI MVP**. These documents translate the [MVP Product Backlog](../MVP_PRODUCT_BACKLOG.md) and [PRD](../PRD.md) into an implementation-ready technical design.
+Architecture package for the **Citepath MVP**. These documents translate the [MVP Product Backlog](../MVP_PRODUCT_BACKLOG.md) and [PRD](../PRD.md) into an implementation-ready technical design.
 
 ## Purpose
 

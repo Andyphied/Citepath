@@ -1,6 +1,6 @@
 # API Design
 
-REST API for AtlasOps AI MVP. Base URL: `/api/v1`. All workspace-scoped routes require `Authorization: Bearer <jwt>` and valid workspace membership.
+REST API for Citepath MVP. Base URL: `/api/v1`. All workspace-scoped routes require `Authorization: Bearer <jwt>` and valid workspace membership.
 
 ## Common Conventions
 

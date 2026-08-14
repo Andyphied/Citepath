@@ -1,8 +1,8 @@
-# PRD: AtlasOps AI — Engineering Knowledge & Incident Response Assistant
+# PRD: Citepath — Engineering Knowledge & Incident Response Assistant
 
 ## 1. Product Summary
 
-**AtlasOps AI** is an AI-powered knowledge assistant for engineering teams. It connects to internal engineering documents, runbooks, incident reports, architecture notes, pull request summaries, deployment logs, and service documentation. It helps engineers quickly answer operational questions, investigate incidents, summarize technical context, and recommend next actions.
+**Citepath** is an AI-powered knowledge assistant for engineering teams. It connects to internal engineering documents, runbooks, incident reports, architecture notes, pull request summaries, deployment logs, and service documentation. It helps engineers quickly answer operational questions, investigate incidents, summarize technical context, and recommend next actions.
 
 The product combines **RAG**, **AI agents**, **vector search**, **tool calling**, **multi-tenant backend architecture**, and **cloud infrastructure**.
 
@@ -12,7 +12,7 @@ The goal is not to build a simple chatbot. The goal is to build a production-sty
 
 **One-liner:**
 
-> AtlasOps AI helps engineering teams search, understand, and act on their internal technical knowledge using AI agents and retrieval-augmented generation.
+> Citepath helps engineering teams search, understand, and act on their internal technical knowledge using AI agents and retrieval-augmented generation.
 
 **Target users:**
 
@@ -30,7 +30,7 @@ An engineer asks:
 
 > “The billing API is returning intermittent 502s after the latest deployment. What changed recently, what runbook applies, and what should I check first?”
 
-AtlasOps AI should retrieve relevant deployment notes, incident history, service docs, runbooks, and architecture context, then produce a grounded answer with citations and recommended next steps.
+Citepath should retrieve relevant deployment notes, incident history, service docs, runbooks, and architecture context, then produce a grounded answer with citations and recommended next steps.
 
 ## 3. Why This Is a Strong Portfolio Project
 
@@ -61,7 +61,7 @@ Engineering teams accumulate knowledge across many disconnected places:
 
 When something breaks or a new engineer joins, finding the right context is slow. Traditional search often fails because users do not know the exact keywords. Generic AI chatbots are risky because they hallucinate or answer without knowing the company’s actual system.
 
-AtlasOps AI solves this by giving teams an AI assistant that answers using retrieved internal context, cites its sources, and can run controlled investigation tools.
+Citepath solves this by giving teams an AI assistant that answers using retrieved internal context, cites its sources, and can run controlled investigation tools.
 
 ## 5. Goals
 
@@ -171,7 +171,7 @@ Needs:
 
 ### Document ingestion
 
-As a workspace admin, I want to upload engineering documents so that AtlasOps can index my team’s knowledge.
+As a workspace admin, I want to upload engineering documents so that Citepath can index my team’s knowledge.
 
 Acceptance criteria:
 
@@ -1122,7 +1122,7 @@ This shows AI product judgment beyond basic implementation.
 Use this structure:
 
 ```text
-# AtlasOps AI
+# Citepath
 
 ## Overview
 ## Problem

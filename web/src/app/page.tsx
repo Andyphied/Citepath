@@ -23,7 +23,7 @@ export default function HomePage() {
     <AppShell title="Home">
       <section className="max-w-2xl">
         <p className="font-[family-name:var(--font-display)] text-3xl text-[var(--ink)]">
-          AtlasOps AI
+          Citepath
         </p>
         <p className="mt-3 text-[var(--muted)] leading-relaxed">
           {user

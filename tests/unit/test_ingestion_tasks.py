@@ -1172,7 +1172,7 @@ def test_process_ingestion_job_sanitizes_path_bearing_file_not_found(
         EMBEDDING_MODEL="text-embedding-3-small",
     )
     storage_key = f"{workspace_id}/{document_id}/missing-runbook.pdf"
-    absolute_path = f"/var/data/atlasops/storage/{storage_key}"
+    absolute_path = f"/var/data/citepath/storage/{storage_key}"
     storage_backend = MagicMock()
     storage_backend.get.side_effect = FileNotFoundError(
         f"Storage object not found: {absolute_path}"

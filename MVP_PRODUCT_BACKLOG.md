@@ -1,6 +1,6 @@
-# AtlasOps AI — MVP Product Backlog
+# Citepath — MVP Product Backlog
 
-> Implementation-ready product backlog derived from the AtlasOps AI PRD.  
+> Implementation-ready product backlog derived from the Citepath PRD.  
 > Scope: MVP only. No V2, integrations, or speculative roadmap items.
 
 **Individual stories:** Each user story is also available as a separate file in [`stories/`](./stories/README.md).
@@ -9,7 +9,7 @@
 
 ## 1. MVP Product Summary
 
-**AtlasOps AI** is a multi-tenant AI knowledge assistant for engineering teams. Users create workspaces, upload technical documents (runbooks, incident reports, architecture notes), and the system indexes them via embeddings and vector search. Engineers ask natural-language questions and receive **grounded answers with citations**. An **incident investigation agent** uses safe internal tools to search the knowledge base, summarize documents, compare incidents, and suggest debugging steps — without performing external actions.
+**Citepath** is a multi-tenant AI knowledge assistant for engineering teams. Users create workspaces, upload technical documents (runbooks, incident reports, architecture notes), and the system indexes them via embeddings and vector search. Engineers ask natural-language questions and receive **grounded answers with citations**. An **incident investigation agent** uses safe internal tools to search the knowledge base, summarize documents, compare incidents, and suggest debugging steps — without performing external actions.
 
 The MVP proves the core product loop:
 
@@ -88,7 +88,7 @@ Can ask questions and view answers/conversations; cannot upload, delete, re-inde
 
 **User Story**
 
-> As a new user, I want to register with email and password, so that I can access AtlasOps AI.
+> As a new user, I want to register with email and password, so that I can access Citepath.
 
 **Product Rationale**
 
@@ -534,7 +534,7 @@ Defense in depth for the highest-risk MVP requirement: tenant isolation.
 
 **User Story**
 
-> As an Admin, I want to upload engineering documents, so that AtlasOps can index my team's knowledge.
+> As an Admin, I want to upload engineering documents, so that Citepath can index my team's knowledge.
 
 **Product Rationale**
 
@@ -1813,7 +1813,7 @@ Failed jobs block the core loop; admins must see them.
 
 **User Story**
 
-> As an Admin, I want to see recent questions asked in the workspace, so that I understand how the team uses AtlasOps.
+> As an Admin, I want to see recent questions asked in the workspace, so that I understand how the team uses Citepath.
 
 **Product Rationale**
 
@@ -2501,7 +2501,7 @@ FastAPI OpenAPI is zero-cost documentation; supports API-first MVP.
 
 **User Story**
 
-> As a demo presenter, I want a runnable web app with consistent navigation, so that I can walk through AtlasOps in a browser instead of Swagger.
+> As a demo presenter, I want a runnable web app with consistent navigation, so that I can walk through Citepath in a browser instead of Swagger.
 
 **Product Rationale**
 
@@ -2523,7 +2523,7 @@ Portfolio demos need a visual surface; a shared app shell makes every feature pa
 
 - Given Docker Compose is running  
   When I open the web app on port 3000  
-  Then I see the AtlasOps shell with sidebar navigation
+  Then I see the Citepath shell with sidebar navigation
 
 - Given I am logged in with multiple workspaces  
   When I switch workspace in the header  
@@ -2535,7 +2535,7 @@ Portfolio demos need a visual surface; a shared app shell makes every feature pa
 
 **Priority:** P1  
 **Dependencies:** INFRA-001, INFRA-002, AUTH-004, AUTH-005, WS-002, WS-006  
-**Notes for Engineering:** Keep styling minimal but clean (neutral palette, readable typography). No design system required. Match product name "AtlasOps AI" in header.
+**Notes for Engineering:** Keep styling minimal but clean (neutral palette, readable typography). No design system required. Match product name "Citepath" in header.
 
 ---
 
@@ -2670,7 +2670,7 @@ The Q&A screen with citations is the hero portfolio screenshot — it shows the 
 
 **Product Rationale**
 
-The agent page differentiates AtlasOps from simple chatbots; structured output sections make a compelling second hero screenshot.
+The agent page differentiates Citepath from simple chatbots; structured output sections make a compelling second hero screenshot.
 
 **Functional Requirements**
 
@@ -3100,4 +3100,4 @@ Before MVP is considered complete, **all** of the following must be true:
 
 ---
 
-*Generated from AtlasOps AI PRD — MVP scope only. Last updated: July 2026.*
+*Generated from Citepath PRD — MVP scope only. Last updated: July 2026.*

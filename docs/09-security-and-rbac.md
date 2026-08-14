@@ -1,6 +1,6 @@
 # Security and RBAC
 
-Security model for multi-tenant AtlasOps AI MVP.
+Security model for multi-tenant Citepath MVP.
 
 ## Authentication Model
 

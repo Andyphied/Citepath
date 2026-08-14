@@ -1,6 +1,6 @@
 # Data Model
 
-Implementation-ready schema for AtlasOps AI MVP. All tenant-owned tables include `workspace_id` and composite indexes starting with `workspace_id`.
+Implementation-ready schema for Citepath MVP. All tenant-owned tables include `workspace_id` and composite indexes starting with `workspace_id`.
 
 ## Entity Relationship Diagram
 

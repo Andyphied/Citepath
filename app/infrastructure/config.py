@@ -25,7 +25,7 @@ class Environment(StrEnum):
 
 
 class Settings(BaseSettings):
-    """AtlasOps configuration via environment variables (12-factor)."""
+    """Citepath configuration via environment variables (12-factor)."""
 
     model_config = SettingsConfigDict(
         env_file=".env",

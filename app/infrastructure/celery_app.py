@@ -10,7 +10,7 @@ from app.infrastructure.config import get_settings
 def create_celery_app() -> Celery:
     """Build a Celery app wired to Redis and MVP task defaults."""
     settings = get_settings()
-    app = Celery("atlasops", broker=settings.REDIS_URL)
+    app = Celery("citepath", broker=settings.REDIS_URL)
     app.conf.update(
         task_acks_late=True,
         task_time_limit=600,
@@ -23,7 +23,7 @@ def create_celery_app() -> Celery:
 
 
 # Celery CLI expects a module-level app; bootstrap when runtime env is present.
-celery_app: Celery = Celery("atlasops")
+celery_app: Celery = Celery("citepath")
 
 if os.getenv("REDIS_URL"):
     from app.infrastructure.db.base import import_all_models

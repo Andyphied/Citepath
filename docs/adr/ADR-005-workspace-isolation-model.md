@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-AtlasOps AI is multi-tenant. Cross-workspace data leakage would destroy trust and fail MVP success criteria. Isolation must apply to documents, chunks, vector search, conversations, agent runs, usage, and audit data.
+Citepath is multi-tenant. Cross-workspace data leakage would destroy trust and fail MVP success criteria. Isolation must apply to documents, chunks, vector search, conversations, agent runs, usage, and audit data.
 
 ## Decision
 

@@ -17,7 +17,7 @@ export function Sidebar() {
       <div className="border-b border-[var(--sidebar-border)] px-5 py-5">
         <Link href="/" className="block">
           <p className="font-[family-name:var(--font-display)] text-xl tracking-tight text-white">
-            AtlasOps AI
+            Citepath
           </p>
           <p className="mt-1 text-xs text-[var(--sidebar-muted)]">
             Workspace knowledge ops

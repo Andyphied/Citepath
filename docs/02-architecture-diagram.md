@@ -1,6 +1,6 @@
 # Architecture Diagram — System Context
 
-High-level view of AtlasOps AI MVP and its external dependencies.
+High-level view of Citepath MVP and its external dependencies.
 
 ## Narrative
 
@@ -19,7 +19,7 @@ flowchart TB
     Admin[Workspace Admin / Owner]
   end
 
-  subgraph atlasops [AtlasOps AI System]
+  subgraph citepath [Citepath System]
     WebApp[Web App / Admin UI]
     API[FastAPI Backend]
     Worker[Celery Worker]

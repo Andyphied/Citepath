@@ -23,7 +23,7 @@ def clear_settings_cache(tmp_path, monkeypatch):
 @pytest.fixture
 def minimal_env(monkeypatch):
     """Set required environment variables for settings validation."""
-    monkeypatch.setenv("DATABASE_URL", "postgresql://user:pass@localhost:5432/atlasops")
+    monkeypatch.setenv("DATABASE_URL", "postgresql://user:pass@localhost:5432/citepath")
     monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/0")
     monkeypatch.setenv("JWT_SECRET_KEY", "test-secret-key")
     monkeypatch.setenv("STORAGE_BACKEND", "local")

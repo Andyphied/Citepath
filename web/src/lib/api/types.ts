@@ -1,4 +1,4 @@
-/** Shared API response types aligned with AtlasOps backend schemas. */
+/** Shared API response types aligned with Citepath backend schemas. */
 
 export type WorkspaceRole = "owner" | "admin" | "member" | "viewer";
 

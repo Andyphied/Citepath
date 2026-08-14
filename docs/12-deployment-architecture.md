@@ -153,7 +153,7 @@ Commands:
 
 ## Worker Deployment
 
-- Separate ECS service `atlasops-worker`
+- Separate ECS service `citepath-worker`
 - Same ECR image; command override: `celery -A app.infrastructure.celery_app worker -l info -c 2`
 - Autoscaling deferred; fixed count 1 for MVP
 - Scale trigger post-MVP: queue depth > 100

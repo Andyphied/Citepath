@@ -1,1 +1,1 @@
-"""AtlasOps AI application package."""
+"""Citepath application package."""

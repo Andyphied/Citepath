@@ -92,7 +92,7 @@ export async function apiFetch<T>(
     throw new ApiError(
       0,
       "network_error",
-      "Unable to reach the AtlasOps API. Check NEXT_PUBLIC_API_URL and that the API is running.",
+      "Unable to reach the Citepath API. Check NEXT_PUBLIC_API_URL and that the API is running.",
     );
   }
 

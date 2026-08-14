@@ -148,7 +148,7 @@ OPENAPI_TAGS = [
 ]
 
 OPENAPI_DESCRIPTION = """
-Workspace-scoped RAG and incident investigation API for AtlasOps AI.
+Workspace-scoped RAG and incident investigation API for Citepath.
 
 ## Authentication
 
@@ -230,7 +230,7 @@ def create_app() -> FastAPI:
     configure_logging()
     settings = get_settings()
     app = FastAPI(
-        title="AtlasOps AI",
+        title="Citepath",
         description=OPENAPI_DESCRIPTION,
         version="0.1.0",
         lifespan=lifespan,

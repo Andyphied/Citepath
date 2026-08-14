@@ -59,7 +59,7 @@ def start_worker_heartbeat(
             "stop_event": _stop_event,
             "sleep_fn": sleeper,
         },
-        name="atlasops-worker-heartbeat",
+        name="citepath-worker-heartbeat",
         daemon=True,
     )
     thread.start()

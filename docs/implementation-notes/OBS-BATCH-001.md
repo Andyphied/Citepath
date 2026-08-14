@@ -1,7 +1,7 @@
 # OBS-BATCH-001 Implementation Note
 
 Batch: **OBS-005** + **OBS-007** — Phase 2 OBS reliability closeout  
-Gate 1 sequence: `atlasops-story-implementer` (Step 2a) → `atlasops-platform-engineer` (Step 2b)
+Gate 1 sequence: `citepath-story-implementer` (Step 2a) → `citepath-platform-engineer` (Step 2b)
 
 ## Batch Summary
 
@@ -128,7 +128,7 @@ Compose wires `WORKER_HEARTBEAT_INTERVAL_SECONDS` and `CELERY_DEFAULT_QUEUE` int
 
 ### Smoke Evidence (2026-08-03)
 
-Stack: `WORKER_HEARTBEAT_INTERVAL_SECONDS=30 docker compose -f docker-compose.yml -f /tmp/atlasops-smoke-ports.yml up -d postgres redis migrate api worker`
+Stack: `WORKER_HEARTBEAT_INTERVAL_SECONDS=30 docker compose -f docker-compose.yml -f /tmp/citepath-smoke-ports.yml up -d postgres redis migrate api worker`
 
 | Check | Result |
 |-------|--------|

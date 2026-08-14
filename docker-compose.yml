@@ -1,4 +1,4 @@
-# AtlasOps AI local stack — API, worker, web UI, PostgreSQL (pgvector), Redis.
+# Citepath local stack — API, worker, web UI, PostgreSQL (pgvector), Redis.
 # Fresh clone: docker compose up --build
 # Web UI: http://localhost:3000  API: http://localhost:8000
 # Optional Flower (local Celery UI): docker compose --profile flower up --build
@@ -8,8 +8,10 @@
 #   WORKER_HEARTBEAT_INTERVAL_SECONDS  CELERY_DEFAULT_QUEUE
 # Live seed + RAG demo require a real provider key (placeholder is boot-only).
 
+name: citepath
+
 x-app-environment: &app-environment
-  DATABASE_URL: postgresql+psycopg2://atlasops:atlasops@postgres:5432/atlasops
+  DATABASE_URL: postgresql+psycopg2://citepath:citepath@postgres:5432/citepath
   REDIS_URL: redis://redis:6379/0
   JWT_SECRET_KEY: dev-only-change-me-in-production
   STORAGE_BACKEND: local
@@ -28,15 +30,15 @@ services:
   postgres:
     image: pgvector/pgvector:pg16
     environment:
-      POSTGRES_USER: atlasops
-      POSTGRES_PASSWORD: atlasops
-      POSTGRES_DB: atlasops
+      POSTGRES_USER: citepath
+      POSTGRES_PASSWORD: citepath
+      POSTGRES_DB: citepath
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U atlasops -d atlasops"]
+      test: ["CMD-SHELL", "pg_isready -U citepath -d citepath"]
       interval: 5s
       timeout: 5s
       retries: 10

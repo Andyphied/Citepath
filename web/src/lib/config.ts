@@ -1,4 +1,4 @@
-/** Public runtime configuration for the AtlasOps web app. */
+/** Public runtime configuration for the Citepath web app. */
 
 export function getApiBaseUrl(): string {
   const raw = process.env.NEXT_PUBLIC_API_URL?.trim();
@@ -8,5 +8,5 @@ export function getApiBaseUrl(): string {
   return raw.replace(/\/+$/, "");
 }
 
-export const AUTH_TOKEN_COOKIE = "atlasops_token";
-export const ACTIVE_WORKSPACE_STORAGE_KEY = "atlasops_active_workspace_id";
+export const AUTH_TOKEN_COOKIE = "citepath_token";
+export const ACTIVE_WORKSPACE_STORAGE_KEY = "citepath_active_workspace_id";

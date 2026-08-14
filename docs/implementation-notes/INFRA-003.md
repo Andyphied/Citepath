@@ -95,7 +95,7 @@ Integration tests require Docker (testcontainers + Python `docker` SDK); skipped
 - `pytest tests/unit/test_models.py`: 2 passed ✓
 - `pytest tests/integration/test_migrations.py`: skipped in agent environment (Docker socket not visible to Python SDK); manual container verification performed instead ✓
 - `docker compose config`: valid; `migrate` service command `alembic upgrade head` ✓
-- `atlasops-migrate` image: `alembic current` reports `002_add_workspace_slug (head)` ✓
+- `citepath-migrate` image: `alembic current` reports `002_add_workspace_slug (head)` ✓
 - Full `docker compose up --build`: build succeeded; stack start blocked by host port 5432 conflict (environment-specific)
 
 ## Step 5b Platform Follow-up (2026-07-06)

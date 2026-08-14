@@ -68,7 +68,7 @@ def test_openapi_metadata_and_bearer_jwt_scheme(minimal_env) -> None:
     client = TestClient(create_app())
     schema = client.get("/openapi.json").json()
 
-    assert schema["info"]["title"] == "AtlasOps AI"
+    assert schema["info"]["title"] == "Citepath"
     assert schema["info"]["version"] == "0.1.0"
     description = schema["info"]["description"]
     assert "Bearer" in description

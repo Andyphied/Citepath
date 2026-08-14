@@ -1,6 +1,6 @@
 # Testing Strategy
 
-Test approach for AtlasOps AI MVP. Goal: prove **workspace isolation**, **grounded AI behavior**, and **core product loop** reliability.
+Test approach for Citepath MVP. Goal: prove **workspace isolation**, **grounded AI behavior**, and **core product loop** reliability.
 
 ## Test Pyramid
 

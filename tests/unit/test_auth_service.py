@@ -16,7 +16,7 @@ from app.modules.users.models import User
 @pytest.fixture
 def settings(minimal_env) -> Settings:
     return Settings(
-        DATABASE_URL="postgresql://user:pass@localhost:5432/atlasops",
+        DATABASE_URL="postgresql://user:pass@localhost:5432/citepath",
         REDIS_URL="redis://localhost:6379/0",
         JWT_SECRET_KEY="test-secret-key",
         STORAGE_BACKEND="local",

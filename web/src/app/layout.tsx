@@ -24,7 +24,7 @@ const mono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AtlasOps AI",
+  title: "Citepath",
   description: "Workspace-scoped RAG and incident investigation",
 };
 

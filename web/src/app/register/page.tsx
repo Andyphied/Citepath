@@ -61,7 +61,7 @@ function RegisterForm() {
       />
       <div className="relative w-full max-w-md">
         <p className="font-[family-name:var(--font-display)] text-4xl tracking-tight text-[var(--ink)]">
-          AtlasOps AI
+          Citepath
         </p>
         <p className="mt-2 text-[var(--muted)]">
           Create an account to start a workspace knowledge base.

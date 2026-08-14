@@ -9,14 +9,14 @@ import {
 import { isProtectedPath } from "@/lib/nav";
 
 describe("hasAuthCookie", () => {
-  it("returns true when atlasops_token is present", () => {
-    expect(hasAuthCookie("atlasops_token=abc123; other=1")).toBe(true);
+  it("returns true when citepath_token is present", () => {
+    expect(hasAuthCookie("citepath_token=abc123; other=1")).toBe(true);
   });
 
   it("returns false when cookie missing or empty", () => {
     expect(hasAuthCookie(null)).toBe(false);
     expect(hasAuthCookie("")).toBe(false);
-    expect(hasAuthCookie("atlasops_token=")).toBe(false);
+    expect(hasAuthCookie("citepath_token=")).toBe(false);
     expect(hasAuthCookie("session=1")).toBe(false);
   });
 });
@@ -39,7 +39,7 @@ describe("session cookie helpers", () => {
   it("sets and clears the access token cookie", () => {
     setAccessToken("jwt-value");
     expect(getAccessToken()).toBe("jwt-value");
-    expect(document.cookie).toContain("atlasops_token=");
+    expect(document.cookie).toContain("citepath_token=");
 
     clearAccessToken();
     expect(getAccessToken()).toBeNull();

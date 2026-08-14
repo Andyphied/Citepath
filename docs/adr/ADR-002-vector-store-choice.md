@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-AtlasOps AI must store document chunk embeddings and perform similarity search scoped by workspace. MVP backlog assumption A3 specifies PostgreSQL + pgvector. The corpus size for portfolio demo (Northstar Cloud) is small (tens of documents, thousands of chunks).
+Citepath must store document chunk embeddings and perform similarity search scoped by workspace. MVP backlog assumption A3 specifies PostgreSQL + pgvector. The corpus size for portfolio demo (Northstar Cloud) is small (tens of documents, thousands of chunks).
 
 ## Decision
 

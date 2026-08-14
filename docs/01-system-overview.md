@@ -2,7 +2,7 @@
 
 ## Product Summary
 
-AtlasOps AI is a multi-tenant AI knowledge assistant for engineering teams. Users create **workspaces**, upload technical documents (runbooks, incident reports, architecture notes), and the system indexes them via embeddings and vector search. Engineers ask natural-language questions and receive **grounded answers with citations**. An **incident investigation agent** uses safe, read-only tools to search the knowledge base, summarize documents, compare incidents, and suggest debugging steps.
+Citepath is a multi-tenant AI knowledge assistant for engineering teams. Users create **workspaces**, upload technical documents (runbooks, incident reports, architecture notes), and the system indexes them via embeddings and vector search. Engineers ask natural-language questions and receive **grounded answers with citations**. An **incident investigation agent** uses safe, read-only tools to search the knowledge base, summarize documents, compare incidents, and suggest debugging steps.
 
 ## MVP Product Loop
 
