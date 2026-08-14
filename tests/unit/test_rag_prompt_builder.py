@@ -65,6 +65,26 @@ def test_parse_completion_payload_raises_on_non_object_json() -> None:
         parse_completion_payload('["not", "an", "object"]')
 
 
+def test_build_grounded_prompt_instructs_operational_followups() -> None:
+    built = build_grounded_prompt(
+        question="What should I check for billing 502 errors?",
+        chunks=[
+            ContextChunk(
+                chunk_id=uuid4(),
+                content="Restart billing-api after deploy when 502 occurs.",
+                content_preview="Restart billing-api",
+                score=0.91,
+                document_id=uuid4(),
+                document_title="Billing Runbook",
+            )
+        ],
+    )
+    system = built.messages[0]["content"]
+    assert "Follow-up rules" in system
+    assert "Do NOT ask product/capability questions" in system
+    assert built.prompt_version == PROMPT_VERSION
+
+
 def test_build_grounded_prompt_limits_history_to_max_turns() -> None:
     from app.modules.rag.prompt_builder import MAX_HISTORY_TURNS, build_grounded_prompt
 

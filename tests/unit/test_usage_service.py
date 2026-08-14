@@ -71,6 +71,8 @@ def test_usage_service_logs_embedding_event(workspace_id) -> None:
 
 def test_usage_service_swallows_repository_errors(workspace_id) -> None:
     session = MagicMock()
+    session.begin_nested.return_value.__enter__ = MagicMock(return_value=None)
+    session.begin_nested.return_value.__exit__ = MagicMock(return_value=False)
     service = UsageService(session)
 
     with patch.object(
@@ -89,4 +91,6 @@ def test_usage_service_swallows_repository_errors(workspace_id) -> None:
             )
         )
 
-    session.rollback.assert_called_once()
+    # Failed usage writes must not roll back the caller's transaction.
+    session.rollback.assert_not_called()
+    session.begin_nested.assert_called_once()
