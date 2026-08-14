@@ -17,6 +17,7 @@ import {
   shouldApplyAskResponse,
   type AskTurn,
 } from "@/lib/ask/thread";
+import { ASK_DEMO_PROMPTS } from "@/lib/demo/prompts";
 
 function errorMessage(err: unknown, fallback: string): string {
   return err instanceof ApiError ? err.message : fallback;
@@ -240,13 +241,27 @@ export default function AskPage() {
         !submitting &&
         turns.length === 0 &&
         !submitError ? (
-          <p className="text-sm text-[var(--muted)] leading-relaxed">
-            Tip: open{" "}
-            <code className="rounded bg-[var(--accent-soft)] px-1 py-0.5 font-[family-name:var(--font-mono)] text-xs">
-              /ask?q=billing+502
-            </code>{" "}
-            to prefill a demo question.
-          </p>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+              Try a Northstar demo question
+            </p>
+            <div className="mt-2 flex flex-col gap-2">
+              {ASK_DEMO_PROMPTS.map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  disabled={submitting || !activeWorkspaceId}
+                  className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-left text-sm text-[var(--ink)] transition hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] disabled:opacity-50"
+                  onClick={() => {
+                    setQuestion(item);
+                    void submitQuestion(item);
+                  }}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+          </div>
         ) : null}
       </section>
     </AppShell>

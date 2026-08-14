@@ -15,6 +15,7 @@ import {
 } from "@/lib/api/agent";
 import { ApiError } from "@/lib/api/client";
 import type { AgentRunResponse } from "@/lib/api/types";
+import { AGENT_DEMO_PROMPTS } from "@/lib/demo/prompts";
 
 function errorMessage(err: unknown, fallback: string): string {
   return err instanceof ApiError ? err.message : fallback;
@@ -202,10 +203,27 @@ export default function AgentPage() {
         {!running && result ? <InvestigationResult result={result} /> : null}
 
         {activeWorkspaceId && !running && !result && !runError ? (
-          <p className="text-sm text-[var(--muted)] leading-relaxed">
-            Tip: describe a concrete incident (service, symptom, recent change)
-            for the strongest structured summary and sources.
-          </p>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+              Try a Northstar investigation
+            </p>
+            <div className="mt-2 flex flex-col gap-2">
+              {AGENT_DEMO_PROMPTS.map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  disabled={running || !activeWorkspaceId}
+                  className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-left text-sm text-[var(--ink)] transition hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] disabled:opacity-50"
+                  onClick={() => {
+                    setObjective(item);
+                    void startInvestigation(item);
+                  }}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+          </div>
         ) : null}
       </section>
     </AppShell>
