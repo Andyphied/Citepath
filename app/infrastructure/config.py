@@ -61,7 +61,9 @@ class Settings(BaseSettings):
     JWT_EXPIRY_HOURS: int = Field(default=24, ge=1)
     EMBEDDING_MODEL: str = Field(default="text-embedding-3-small")
     CHAT_MODEL: str = Field(default="gpt-4o-mini")
-    RETRIEVAL_MIN_SCORE: float = Field(default=0.72, ge=0.0, le=1.0)
+    # text-embedding-3-small cosine sims for short ops docs often land ~0.40–0.65;
+    # thresholds above ~0.55 routinely filter relevant Northstar demo matches.
+    RETRIEVAL_MIN_SCORE: float = Field(default=0.45, ge=0.0, le=1.0)
     MAX_UPLOAD_BYTES: int = Field(default=20_971_520, ge=1)
     CHUNK_SIZE_TOKENS: int = Field(
         default=1000,

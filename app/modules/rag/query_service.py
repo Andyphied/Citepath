@@ -47,9 +47,27 @@ INSUFFICIENT_CONTEXT_MESSAGE = (
     "to your topic."
 )
 INSUFFICIENT_FOLLOWUPS = [
-    "Which documents cover this topic?",
-    "Can I upload a runbook for this service?",
+    "What should I check for billing 502 errors after deployment?",
+    "What was the root cause of the August 2025 billing-api 502 incident?",
+    "What is the default API gateway upstream timeout for billing-api?",
 ]
+
+# Product/capability questions are answered by the UI, not the knowledge base.
+_META_FOLLOWUP_MARKERS = (
+    "upload",
+    "can i ",
+    "can we ",
+    "does this",
+    "do you support",
+    "how do i use",
+    "which documents cover",
+    "what documents are",
+    "list all documents",
+    "in this app",
+    "in the product",
+    "workspace documentation",
+)
+
 
 
 class RagQueryService:
@@ -314,9 +332,9 @@ class RagQueryService:
         if not chunks:
             return "low"
         top_score = chunks[0].score
-        if top_score >= 0.85 and len(chunks) >= 2:
+        if top_score >= 0.60 and len(chunks) >= 2:
             return "high"
-        if top_score >= 0.72:
+        if top_score >= 0.45:
             return "medium"
         return "low"
 
@@ -324,5 +342,15 @@ class RagQueryService:
     def _normalize_followups(raw_followups: Any) -> list[str]:
         if not isinstance(raw_followups, list):
             return []
-        followups = [str(item).strip() for item in raw_followups if str(item).strip()]
-        return followups[:3]
+        followups: list[str] = []
+        for item in raw_followups:
+            text = str(item).strip()
+            if not text:
+                continue
+            lowered = text.lower()
+            if any(marker in lowered for marker in _META_FOLLOWUP_MARKERS):
+                continue
+            followups.append(text)
+            if len(followups) >= 3:
+                break
+        return followups

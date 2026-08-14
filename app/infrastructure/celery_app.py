@@ -26,5 +26,8 @@ def create_celery_app() -> Celery:
 celery_app: Celery = Celery("atlasops")
 
 if os.getenv("REDIS_URL"):
+    from app.infrastructure.db.base import import_all_models
+
+    import_all_models()
     celery_app = create_celery_app()
     import app.modules.ingestion.tasks  # noqa: E402, F401

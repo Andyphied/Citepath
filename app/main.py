@@ -188,6 +188,10 @@ see repository `docs/README.md`.
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Load and validate configuration on startup."""
+    from app.infrastructure.db.base import import_all_models
+
+    # Ensure FK targets (workspaces, users, …) are in MetaData before usage/audit flushes.
+    import_all_models()
     get_settings()
     yield
 

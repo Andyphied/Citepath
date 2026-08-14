@@ -52,7 +52,11 @@ class UsageService:
         self._repository = UsageRepository(session)
 
     def log_event(self, event: UsageEventInput) -> None:
-        """Persist a usage event; failures are logged and swallowed."""
+        """Persist a usage event; failures are logged and swallowed.
+
+        Uses a savepoint so a failed usage write does not roll back the
+        caller's in-flight transaction (agent runs, RAG persistence, etc.).
+        """
         observe_llm_call(
             operation=event.operation.value,
             status=event.status.value,
@@ -65,22 +69,22 @@ class UsageService:
                 completion_tokens=event.completion_tokens,
                 embedding_tokens=event.embedding_tokens,
             )
-            self._repository.create(
-                workspace_id=event.workspace_id,
-                user_id=event.user_id,
-                provider=event.provider,
-                model=event.model,
-                operation=event.operation,
-                prompt_tokens=event.prompt_tokens,
-                completion_tokens=event.completion_tokens,
-                embedding_tokens=event.embedding_tokens,
-                estimated_cost_usd=estimated_cost,
-                latency_ms=event.latency_ms,
-                status=event.status,
-                metadata=event.metadata,
-            )
+            with self._session.begin_nested():
+                self._repository.create(
+                    workspace_id=event.workspace_id,
+                    user_id=event.user_id,
+                    provider=event.provider,
+                    model=event.model,
+                    operation=event.operation,
+                    prompt_tokens=event.prompt_tokens,
+                    completion_tokens=event.completion_tokens,
+                    embedding_tokens=event.embedding_tokens,
+                    estimated_cost_usd=estimated_cost,
+                    latency_ms=event.latency_ms,
+                    status=event.status,
+                    metadata=event.metadata,
+                )
         except Exception:
-            self._session.rollback()
             logger.exception(
                 "usage_event_log_failed",
                 workspace_id=str(event.workspace_id),

@@ -178,9 +178,12 @@ class AgentOrchestrator:
                 "role": "system",
                 "content": (
                     "You are an incident investigation agent. Choose the next action using "
-                    "ONLY whitelisted tools. Respond with JSON: "
-                    '{"action":"call_tool"|"finish","tool_name":"...",'
-                    '"arguments":{...},"reason":"..."}. '
+                    "ONLY whitelisted tools. Respond with JSON only: "
+                    '{"action":"call_tool","tool_name":"<exact_tool_name>",'
+                    '"arguments":{...},"reason":"..."} or '
+                    '{"action":"finish","reason":"..."}. '
+                    "Never put a tool name in the action field — action must be "
+                    "exactly call_tool or finish. "
                     "Search the knowledge base before making factual recommendations. "
                     "When you have document IDs, use summarize_document, "
                     "extract_action_items, or compare_incidents as needed. "

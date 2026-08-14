@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.modules.rag.schemas import CitationResponse
 
@@ -218,3 +218,15 @@ class AgentPlanAction(BaseModel):
     tool_name: str | None = None
     arguments: dict[str, Any] | None = None
     reason: str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def coerce_tool_named_action(cls, data: Any) -> Any:
+        """Accept common LLM slip: action set to the tool name instead of call_tool."""
+        if not isinstance(data, dict):
+            return data
+        action = data.get("action")
+        if isinstance(action, str) and action not in {"call_tool", "finish"}:
+            tool_name = data.get("tool_name") or action
+            return {**data, "action": "call_tool", "tool_name": tool_name}
+        return data

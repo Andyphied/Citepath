@@ -8,7 +8,7 @@ from typing import Any
 from app.modules.rag.exceptions import ChatCompletionError
 from app.modules.rag.schemas import ContextChunk
 
-PROMPT_VERSION = "rag-grounded-v1"
+PROMPT_VERSION = "rag-grounded-v2"
 MAX_HISTORY_TURNS = 5
 
 SYSTEM_PROMPT = """You are an operational assistant for engineering teams.
@@ -22,6 +22,12 @@ Return valid JSON with keys:
 - recommendations: array of strings
 - cited_chunk_ids: array of chunk UUID strings referenced in the answer
 - suggested_followups: array of 2-3 follow-up questions
+Follow-up rules:
+- Ask about operational details grounded in the chunks (root cause, checks, timeouts,
+  restart steps, related incidents, owning systems).
+- Do NOT ask product/capability questions (uploads, whether the app can do X,
+  which UI page to use, or generic "which documents exist").
+- Prefer concrete service/symptom/config questions a runbook would answer next.
 Do not include markdown code fences."""
 
 

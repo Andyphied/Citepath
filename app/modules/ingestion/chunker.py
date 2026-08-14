@@ -106,17 +106,18 @@ def _format_chunk_content(
     overlap_prefix: str = "",
 ) -> str:
     body = "\n\n".join(unit.text for unit in paragraphs)
+    # Prefer the earliest heading in the chunk. Skip stamping when the body
+    # already opens with a markdown heading (avoids "# Escalation\n\n# Title…").
     section_heading = next(
-        (
-            unit.section_heading
-            for unit in reversed(paragraphs)
-            if unit.section_heading
-        ),
+        (unit.section_heading for unit in paragraphs if unit.section_heading),
         None,
+    )
+    body_opens_with_heading = bool(
+        paragraphs and _HEADING_PATTERN.match(paragraphs[0].text.strip())
     )
 
     parts: list[str] = []
-    if section_heading is not None:
+    if section_heading is not None and not body_opens_with_heading:
         parts.append(f"# {section_heading}")
     if overlap_prefix:
         parts.append(overlap_prefix)
