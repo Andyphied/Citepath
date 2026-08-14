@@ -60,6 +60,8 @@ seed. The real provider key from step 0 **is** required (embeddings + indexing).
 
 ```bash
 docker compose exec api python -m scripts.seed_demo
+# After editing demo_data/, force re-index:
+docker compose exec api python -m scripts.seed_demo --force
 ```
 
 Creates (idempotent) — **local demo credentials only**; change before any
@@ -205,7 +207,7 @@ Copy [`.env.example`](.env.example) for host-native tools. Compose injects defau
 | `JWT_EXPIRY_HOURS` | `24` | Access token lifetime |
 | `EMBEDDING_MODEL` | `text-embedding-3-small` | Embedding model |
 | `CHAT_MODEL` | `gpt-4o-mini` | Chat model |
-| `RETRIEVAL_MIN_SCORE` | `0.72` | Min similarity for RAG context |
+| `RETRIEVAL_MIN_SCORE` | `0.45` | Min cosine similarity for RAG context |
 | `CHUNK_SIZE_TOKENS` | `1000` | Target chunk size |
 | `CHUNK_OVERLAP_TOKENS` | `150` | Chunk overlap |
 | `EMBEDDING_BATCH_SIZE` | `64` | Embed batch size |

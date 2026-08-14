@@ -17,6 +17,7 @@ x-app-environment: &app-environment
   LLM_PROVIDER: ${LLM_PROVIDER:-openai}
   OPENAI_API_KEY: ${OPENAI_API_KEY:-sk-dev-placeholder-not-used-locally}
   ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+  RETRIEVAL_MIN_SCORE: ${RETRIEVAL_MIN_SCORE:-0.45}
   ENVIRONMENT: development
   LOG_LEVEL: INFO
   # OBS-007: worker structured heartbeat + Redis LLEN key for /health/ready.queue_depth

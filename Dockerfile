@@ -25,6 +25,8 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 
 COPY pyproject.toml alembic.ini ./
 COPY app ./app
+COPY scripts ./scripts
+COPY demo_data ./demo_data
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1

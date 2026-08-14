@@ -28,3 +28,4 @@ htmlcov/
 
 # Local uploads (dev)
 uploads/
+.cursor/
