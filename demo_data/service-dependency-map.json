@@ -1,19 +1,43 @@
 {
+  "workspace": "northstar-cloud",
+  "updated": "2025-08-14",
+  "notes": [
+    "billing-api 502s after deploy often implicate api-gateway upstream timeout or billing-db pool saturation",
+    "auth-service outages block login but are not the first suspect for billing-api 502 with healthy auth"
+  ],
   "services": [
     {
       "name": "billing-api",
-      "depends_on": ["auth-service", "billing-db", "redis-cache", "api-gateway"]
+      "namespace": "payments",
+      "health": "/health/ready",
+      "depends_on": ["auth-service", "billing-db", "redis-cache", "api-gateway"],
+      "critical_config": ["gateway_upstream_timeout_seconds=10"]
     },
     {
       "name": "auth-service",
+      "namespace": "identity",
+      "health": "/health/ready",
       "depends_on": ["auth-db", "redis-cache", "notification-service"]
     },
     {
+      "name": "api-gateway",
+      "namespace": "edge",
+      "depends_on": [],
+      "critical_config": ["default_upstream_timeout_seconds=10"]
+    },
+    {
       "name": "notification-service",
+      "namespace": "comms",
       "depends_on": ["notification-db"]
     },
     {
-      "name": "api-gateway",
+      "name": "billing-db",
+      "kind": "postgresql",
+      "depends_on": []
+    },
+    {
+      "name": "redis-cache",
+      "kind": "redis",
       "depends_on": []
     }
   ]
